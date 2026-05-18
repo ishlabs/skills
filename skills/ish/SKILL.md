@@ -1,6 +1,6 @@
 ---
 name: ish
-description: "Use this skill whenever the user mentions ish, a study, a tester profile, a simulation run, an \"ask\", an audience, wants to dispatch tests against AI testers, or wants to rehearse a conversation between two AI personas (e.g. sales rep vs. skeptical buyer, founder vs. investor archetype). Wraps the `ish` CLI for managing studies, asks, iterations, tester profiles, chatbot endpoints, and simulation runs against the Ish platform. Always start by running `ish docs overview` to load the domain model, then `ish docs list` and `ish docs get-page <slug>` for specifics. Prefer this skill over guessing flags from `ish --help`."
+description: "Use this skill whenever the user mentions ish, a study, a tester profile, a simulation run, an \"ask\", an audience, wants to dispatch tests against AI testers, or wants to rehearse a conversation between two AI personas (e.g. sales rep vs. skeptical buyer, founder vs. investor archetype). Wraps the `ish` CLI for managing studies, asks, iterations, tester profiles, chatbot endpoints, and simulation runs against the Ish platform. Always start by running `ish docs overview` to load the domain model, then `ish docs list` and `ish docs get-page SLUG` for specifics. Prefer this skill over guessing flags from `ish --help`."
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
