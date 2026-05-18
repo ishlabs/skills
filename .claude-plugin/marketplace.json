@@ -1,0 +1,19 @@
+{
+  "name": "ishlabs",
+  "owner": {
+    "name": "Ish Labs",
+    "url": "https://ishlabs.io"
+  },
+  "metadata": {
+    "description": "Agent Skills for ish"
+  },
+  "plugins": [
+    {
+      "name": "ish",
+      "source": "./",
+      "description": "Drive the ish CLI for studies, asks, and simulations against AI tester profiles.",
+      "strict": false,
+      "skills": ["./skills/ish"]
+    }
+  ]
+}

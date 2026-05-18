@@ -1,0 +1,119 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint skill frontmatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install linter dependency
+        run: npm install --no-save --no-package-lock gray-matter@^4.0.3
+
+      - name: Validate every skills/*/SKILL.md
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const matter = require('gray-matter');
+
+          const SKILLS_DIR = 'skills';
+          const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+          const NAME_MAX = 64;
+          const DESC_MAX = 1024;
+          const ALLOWED = new Set([
+            'name',
+            'description',
+            'license',
+            'allowed-tools',
+            'metadata',
+            'compatibility',
+          ]);
+          const errors = [];
+
+          if (!fs.existsSync(SKILLS_DIR)) {
+            console.error(`Missing ${SKILLS_DIR}/ directory`);
+            process.exit(1);
+          }
+
+          const skillDirs = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name);
+
+          if (skillDirs.length === 0) {
+            console.error(`No skills found in ${SKILLS_DIR}/`);
+            process.exit(1);
+          }
+
+          for (const dir of skillDirs) {
+            const rel = path.join(SKILLS_DIR, dir, 'SKILL.md');
+            const errorCountBefore = errors.length;
+            if (!fs.existsSync(rel)) {
+              errors.push(`${dir}: missing SKILL.md`);
+              continue;
+            }
+
+            let data;
+            try {
+              ({ data } = matter(fs.readFileSync(rel, 'utf-8')));
+            } catch (e) {
+              errors.push(`${rel}: failed to parse frontmatter: ${e.message}`);
+              continue;
+            }
+
+            for (const k of Object.keys(data)) {
+              if (!ALLOWED.has(k)) {
+                errors.push(`${rel}: unexpected frontmatter key '${k}' (allowed: ${[...ALLOWED].join(', ')})`);
+              }
+            }
+
+            if (typeof data.name !== 'string' || !data.name) {
+              errors.push(`${rel}: frontmatter 'name' missing or not a string`);
+            } else {
+              if (!NAME_RE.test(data.name)) {
+                errors.push(`${rel}: 'name' must be kebab-case (^[a-z0-9]+(-[a-z0-9]+)*$), got "${data.name}"`);
+              }
+              if (data.name.length > NAME_MAX) {
+                errors.push(`${rel}: 'name' is ${data.name.length} chars, max is ${NAME_MAX}`);
+              }
+              if (data.name !== dir) {
+                errors.push(`${rel}: 'name' "${data.name}" must match directory "${dir}"`);
+              }
+            }
+
+            if (typeof data.description !== 'string' || !data.description) {
+              errors.push(`${rel}: frontmatter 'description' missing or not a string`);
+            } else {
+              if (data.description.length > DESC_MAX) {
+                errors.push(`${rel}: 'description' is ${data.description.length} chars, max is ${DESC_MAX}`);
+              }
+              if (/[<>]/.test(data.description)) {
+                errors.push(`${rel}: 'description' must not contain '<' or '>'`);
+              }
+            }
+
+            if (data.metadata && data.metadata.internal === true) {
+              errors.push(`${rel}: 'metadata.internal: true' is not allowed in a published repo`);
+            }
+
+            if (errors.length === errorCountBefore) {
+              console.log(`ok  ${rel}`);
+            }
+          }
+
+          if (errors.length) {
+            console.error('\nValidation failed:');
+            for (const e of errors) console.error('  - ' + e);
+            process.exit(1);
+          }
+          console.log(`\nValidated ${skillDirs.length} skill(s).`);
+          EOF
