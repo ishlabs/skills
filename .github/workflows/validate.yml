@@ -41,8 +41,8 @@ jobs:
           const errors = [];
 
           if (!fs.existsSync(SKILLS_DIR)) {
-            console.error(`Missing ${SKILLS_DIR}/ directory`);
-            process.exit(1);
+            console.log(`No ${SKILLS_DIR}/ directory yet — nothing to validate (pre-seed bootstrap state).`);
+            process.exit(0);
           }
 
           const skillDirs = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
