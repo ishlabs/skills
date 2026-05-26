@@ -683,6 +683,70 @@ Rules to remember:
 See `ish docs get-page concepts/extending-a-simulation` for the full
 mental model (cancel + extend as a pair, error envelopes, cost model).
 
+## 12. Slice study results by frame / segment / turn / sentiment
+
+Goal: ask narrower questions of a finished run than the kitchen-sink
+`ish study results` envelope answers. The canonical use case:
+**"what differed on the login screen across these five iterations?"**.
+
+```bash
+# 12a. Across-iterations comparison on one frame (the canonical question).
+#      --frame matches frame names by case-insensitive substring; pass
+#      a full Frame UUID or an f-… alias when the name is ambiguous.
+ish study results s-b2c --frame login --group-by iteration --json
+
+# 12b. Frustrated reactions to one segment of a video study:
+ish study results s-b2c --segment 3 --sentiment Frustrated
+
+# 12c. Who failed the "verify email" step, and why?
+#      --group-by step exposes per-participant verdicts inline so you
+#      don't fan out across participants.
+ish study results s-b2c --assignment "Sign up" --step verify-email \
+    --group-by step --json
+
+# 12d. Pair-mode chat: only side A turn 4.
+ish study results s-b2c --side a --turn 4
+
+# 12e. Sanity-check coverage when a filter narrows the slice:
+ish study results s-b2c --frame checkout --json \
+    | jq '{matched: .participant_count, total: .totals_unfiltered.participant_count}'
+
+# 12f. A filter that matches zero interactions still returns the stable
+#      envelope shape — participant_count: 0, totals_unfiltered populated,
+#      exit code 0 (not 4). Never error on no-match.
+ish study results s-b2c --frame doesnotexist --json
+# → ValidationError because "doesnotexist" matches no frame names; pass
+#   --include-unmatched only when --frame DID resolve and you want the
+#   degraded captures (frame_version_id: null) back.
+```
+
+Rules to remember:
+- **Filters compose with AND across flags; OR within `--sentiment`.**
+  `--frame login --sentiment Frustrated,Confused` keeps only login-frame
+  interactions whose sentiment is Frustrated OR Confused.
+- **Modality mismatch is not an error.** `--segment 0` on an
+  interactive study emits a stderr warning and is ignored. The
+  exception is **`--group-by`** — `--group-by frame` on a chat study,
+  `--group-by turn` on a video study, etc. error at the router (exit 2).
+- **Empty-slice contract: exit 0, not 4.** Zero matches return a
+  stable envelope with `participant_count: 0` and
+  `totals_unfiltered` populated. Agents key on
+  `totals_unfiltered.participant_count` to ask "is the filter too
+  tight, or did the run not produce data?".
+- `--frame` accepts a name substring, a Frame UUID, an `f-…` alias,
+  or a `frame_version_id` UUID. Ambiguous substring (matches >1
+  frame) errors with the candidate list.
+- `--summary` is orthogonal to filters and narrows the summary over
+  the filtered set. `--transcript` is single-participant and errors
+  (exit 2) when **any** filter or `--group-by` is set.
+- Per-step output exposes `participant_verdicts: [{participant_alias,
+  verdict, reason, evidence_interaction_ids}]` — not
+  `per_participant_verdicts`. The verdict enum is `passed` /
+  `inconclusive` / `failed`.
+
+See `ish docs get-page guides/slicing-results` for the full filter
+table, projection shapes, and the defensive null-handling rules.
+
 ## Tips for chaining commands as an agent
 
 - Capture aliases from JSON: `ITER=$(ish iteration create --url … --json | jq -r .alias)`
@@ -776,6 +840,10 @@ mental model (cancel + extend as a pair, error envelopes, cost model).
 | List of participants from `study run`        | `--json \| jq '.participants[].id'`        | `--get participant_aliases` (or `participant_ids` for UUIDs)                |
 | Per-answer sentiment                      | `--json \| jq '...'` per participant       | `ish study results <id> --json` (sentiment is on every answer row) |
 | "Did this run land?" headline             | `study results --json` + jq filtering | `ish study results <id> --summary --json`                          |
+| Across-iterations comparison on one frame | `study results --json` + jq per iteration | `ish study results <id> --frame login --group-by iteration --json` |
+| Per-step pass/fail with reasons inline    | `study participant --json` per participant + jq | `ish study results <id> --step verify-email --group-by step --json` |
+| Frustrated reactions to one media segment | `study results --json` + jq | `ish study results <id> --segment 3 --sentiment Frustrated --json` |
+| Sanity-check filter coverage              | hand-count `.participants` vs total | `--get totals_unfiltered.participant_count` (set on every sliced envelope) |
 | Chat transcript for one participant (external_chatbot) | `study participant --json` + jq      | `ish study results <id> --transcript <participant_id> --json`           |
 | Pair-mode conversation transcripts        | `study participant --json` per participant       | `ish iteration get <iter-id> --json \| jq '.conversations[]'`     |
 | Participant headline only (no action timeline) | `study participant --json` + jq            | `ish study participant <id> --summary --json`                           |
