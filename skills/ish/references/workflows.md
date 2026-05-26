@@ -720,6 +720,12 @@ ish study results s-b2c --frame doesnotexist --json
 #   degraded captures (frame_version_id: null) back.
 ```
 
+Every `--group-by <axis>` call returns the same envelope:
+`{axis, rows, totals_unfiltered, modality_warnings, study_id, modality}`.
+The `rows` array holds axis-specific slice objects. The envelope is
+uniform across all six axes — agents can code one shape and key on
+`axis` / `modality` to dispatch on what's inside `rows`.
+
 Rules to remember:
 - **Filters compose with AND across flags; OR within `--sentiment`.**
   `--frame login --sentiment Frustrated,Confused` keeps only login-frame
@@ -740,7 +746,8 @@ Rules to remember:
   the filtered set. `--transcript` is single-participant and errors
   (exit 2) when **any** filter or `--group-by` is set.
 - Per-step output exposes `participant_verdicts: [{participant_alias,
-  verdict, reason, evidence_interaction_ids}]` — not
+  verdict, reason, evidence_interaction_ids}]` on **each row of
+  `rows[]`** (one per `(assignment, step)` pair) — not
   `per_participant_verdicts`. The verdict enum is `passed` /
   `inconclusive` / `failed`.
 
@@ -844,6 +851,7 @@ table, projection shapes, and the defensive null-handling rules.
 | Per-step pass/fail with reasons inline    | `study participant --json` per participant + jq | `ish study results <id> --step verify-email --group-by step --json` |
 | Frustrated reactions to one media segment | `study results --json` + jq | `ish study results <id> --segment 3 --sentiment Frustrated --json` |
 | Sanity-check filter coverage              | hand-count `.participants` vs total | `--get totals_unfiltered.participant_count` (set on every sliced envelope) |
+| Know the sliced-results envelope shape    | guess per axis                         | `{axis, rows[], totals_unfiltered, modality_warnings, study_id, modality}` — every `--group-by` axis |
 | Chat transcript for one participant (external_chatbot) | `study participant --json` + jq      | `ish study results <id> --transcript <participant_id> --json`           |
 | Pair-mode conversation transcripts        | `study participant --json` per participant       | `ish iteration get <iter-id> --json \| jq '.conversations[]'`     |
 | Participant headline only (no action timeline) | `study participant --json` + jq            | `ish study participant <id> --summary --json`                           |
