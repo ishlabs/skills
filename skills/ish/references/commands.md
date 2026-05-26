@@ -17,15 +17,18 @@ ish <command> --help
 | `study`     | Persistent research artifact                    | concepts/study              |
 | `iteration` | One configured run of a study (URL or media)    | concepts/iteration          |
 | `ask`       | Lightweight reaction artifact                   | concepts/ask                |
-| `profile`   | Tester profiles, audience generation, and the `suggest-scenarios` + `evidence add`/`list` probe loop for crafting one specific persona | concepts/profile            |
-| `source`    | Upload sources for profile generation           | concepts/source             |
+| `person`    | People, people generation, and the `suggest-scenarios` + `evidence add`/`list` probe loop for crafting one specific persona | concepts/person             |
+| `source`    | Upload sources for person generation           | concepts/source             |
 | `config`    | Simulation configs (model, timing, retries)     | (run `ish config --help`)   |
-| `chat`      | Chat endpoint CRUD + smoke test (external_chatbot mode); pair-mode iterations created via `iteration create --chat-mode tester_pair` | guides/chat                 |
+| `chat`      | Chat endpoint CRUD + smoke test (external_chatbot mode); pair-mode iterations created via `iteration create --chat-mode participant_pair` | guides/chat                 |
 | `secret`    | Per-workspace secrets (`{{secret:KEY}}` resolver) | concepts/secret           |
 | `docs`      | Offline docs for agents                         | (run `ish docs --help`)     |
 | `init`      | Drop this skill into a Claude Code / Codex /    | (run `ish init --help`)     |
 |             | Cursor / Cline / Roo project                    |                             |
-| `login`     | Browser-based auth                              | —                           |
+| `mcp`       | Wire the hosted ish MCP server into local AI    | guides/mcp-add              |
+|             | clients (Cursor, VS Code, Claude Code,          |                             |
+|             | Claude Desktop, Windsurf). Idempotent.          |                             |
+| `login`     | Browser-based auth. Idempotent: short-circuits on valid saved token. `--force` to switch accounts. | —                           |
 | `logout`    | Clear saved credentials                         | —                           |
 | `status`    | Show active session (user, workspace,           | concepts/active-context     |
 |             | study, ask, token validity) — alias `whoami`    |                             |
@@ -47,8 +50,8 @@ the right `ish docs get-page <slug>` to read deep context.
 
 ## Aliases
 
-Short prefixed IDs (e.g. `s-b2c`, `tp-795`, `a-6ec`, `i-d4e`,
-`t-a17`, `tps-3a4`, `w-6ec`, `c-c3c`) are accepted anywhere a UUID
+Short prefixed IDs (e.g. `s-b2c`, `p-795`, `a-6ec`, `i-d4e`,
+`t-a17`, `ps-3a4`, `w-6ec`, `c-c3c`) are accepted anywhere a UUID
 is expected. Full UUIDs always work too. See
 `ish docs get-page reference/aliases`.
 
