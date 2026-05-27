@@ -350,7 +350,7 @@ also in `study poll --json`. Branch on it instead of treating
 `interaction_count: 0` as a generic failure.
 
 Pre-flight tip: `ish workspace info` exposes
-`{studies_used, studies_max, participants_used, participants_max, tier}` so
+`{studies_used, studies_max, people_used, people_max, concurrent_participants_max, workspace_members_max, tier}` so
 you can branch on plan caps before `study create` returns
 `error_code: usage_limit_reached`.
 
