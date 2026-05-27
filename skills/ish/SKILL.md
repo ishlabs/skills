@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.22.0"
+  version: "0.23.0"
 ---
 # ish
 
@@ -193,6 +193,7 @@ When in doubt: side-by-side comparison usually beats in-place edits. Ids are che
 - **Chatbot endpoint response-shape mismatch**: `chat_endpoint_test` succeeds shallowly if the bot responds at all, but a wrong response path (e.g. bot returns `{ data: { reply } }` instead of `{ reply }`) produces empty transcripts on the actual run. Inspect one full test response before dispatching participants.
 - **Chatbot auth drift**: tokens/sessions baked into `--from-curl` expire. If transcripts come back as identical short error strings, re-run `chat_endpoint_test` and refresh the curl spec.
 - **401 surfaces as fake blocker**: an unauthenticated endpoint produces "participant got stuck on auth screen" — looks like a UX blocker but is config. Always confirm endpoint auth before reading transcripts as user-research data.
+- **Don't poll a stuck run forever**: a participant whose worker died will sit in `status: running` until the backend reaper transitions it to `failed, error_kind: stale_worker` (~15 min). The per-participant status payload exposes `age_seconds` (server-computed from `started_at`); once it's above ~900s on a non-terminal row, the run is almost certainly stuck. The CLI's `wait_timeout` envelope explicitly flags this case in its `error` message — when you see "the worker likely died," stop polling and surface the failure rather than retrying. `error_kind: self_timeout` is the same idea but written by the worker itself when it self-aborts past its 25-min ceiling.
 - **No per-page/per-timestamp scoping for media**: there's no "evaluate just slide 14" or "react to seconds 0-30" API. State the focus explicitly in the `assignment` text, or pre-stitch the artifact (e.g. replace one slide locally, upload as a new iteration).
 - **`study get --json` participants live at the top level**, not nested under `iterations[*].participants`. The backend split made `/studies/{id}` lite (metadata + iteration shells, no participant graph) and added `/studies/{id}/participants`; the CLI joins them so `study get --json` carries a flat `participants[]` with `iteration_id` on each row. Read `.participants[]`, not `.iterations[].participants[]`.
 - **All destructive deletes require `--yes` in non-TTY mode**: `ish workspace delete`, `study delete`, `ask delete`, `person delete`, `source delete`, `chat endpoint delete`. In `--json` mode (or any piped/non-TTY invocation), omitting `--yes` refuses with `error_kind: "ConfirmationRequired"` + an `example` field showing the same command with `--yes` appended. `workspace delete` is the highest-blast-radius: it removes ALL nested studies, asks, people, secrets, configs, sources, and chat endpoints — the prompt names them explicitly.
