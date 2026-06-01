@@ -24,14 +24,22 @@ ish person generate \
 # 4. Define the study + iteration A in one call (one-shot path).
 #    The same shape works for image (--image-urls), video / audio /
 #    document (--content-url <url>), and chat (--endpoint <id>).
+#    For text/media you can also pass --segmentation-json (+ email-styling
+#    --content-html/--sender-name/--sender-email/--featured-image-url) here,
+#    so a single SEGMENTED iteration is one call — no separate iteration
+#    create (which would leave an empty A + a redundant B).
+#    Segments are SEMANTIC sections, not paragraphs: group related paragraphs
+#    into a few coherent sections (a long article is usually 3-6 sections, not
+#    one per paragraph). The CLI errors on a missing label and warns on
+#    one-section-per-paragraph.
 ish study create --name "Onboarding UX" --modality interactive \
     --url https://example.com --screen-format desktop \
     --assignment "Sign up:Complete the signup flow" \
     --question "How easy was it?"
 ish study use s-…
 
-# (Optional) add a B variant later instead of inline:
-# ish iteration create --url https://example.com/v2
+# (Optional) add a SECOND iteration only when you actually want to A/B:
+# ish iteration create --url https://example.com/v2   # auto-named "B" (next letter), not "CLI <date>"
 
 # 6. Run, blocking until done
 ish study run --all --wait
@@ -66,6 +74,59 @@ ish study run --all --wait
 ish study get s-…                       # human: "✓ Add to cart 4/5 (80%)" per step
 ish study get s-… --json --verbose      # step_completion[] incl. sample_failures[].participant_id
 ```
+
+### Rich question types (slider, likert, choice, number)
+
+`--question` makes simple text questions only. For `slider`, `likert`,
+`single-choice`, `multiple-choice`, `number`, or `timing: "before"`, use
+`--questionnaire` — which takes **inline JSON, an @file, or a path** (no temp
+file required). `--question` and `--questionnaire` are mutually exclusive.
+
+```bash
+ish study create --name "Pricing page" --modality interactive --url https://example.com \
+    --assignment "React:Look around as you normally would" \
+    --questionnaire '[
+      {"question":"What do you think this does?","type":"text","timing":"after"},
+      {"question":"How easy was it to understand?","type":"slider","min":0,"max":10},
+      {"question":"How strongly do you agree it is for you?","type":"likert",
+       "labels":["Strongly disagree","Disagree","Neutral","Agree","Strongly agree"]},
+      {"question":"Which fits best?","type":"single-choice","options":["A","B","C"]},
+      {"question":"How many seats would you need?","type":"number"}
+    ]'
+# @file and path forms also work: --questionnaire @/tmp/q.json | ./q.json
+```
+
+`slider` takes `min`/`max`(/`step`); `likert` takes `labels`;
+`single-choice`/`multiple-choice` take `options`. The CLI tolerates
+underscored type spellings (`single_choice`); the backend validates the shape.
+Same input forms on `ish ask … --questions`. See `ish docs get-page concepts/questionnaire`.
+
+### 1b. Share the results with someone (no-login link)
+
+Goal: hand the finished study to a prospect or stakeholder who has no ish
+account. Run + analyze first so the public viewer renders the summary.
+
+```bash
+# (optional) brand the workspace — the logo shows on the shared page
+ish workspace update w-… --logo https://logo.clearbit.com/acme.com
+
+# generate the AI summary + key insights (needs ≥5 completed participants)
+ish study analyze s-… --wait
+
+# create the public, no-login link — the printed share_url is the deliverable
+ish study share s-…
+# → https://<frontend>/share/study/Hk9_…   (paste into an email)
+
+ish study share s-… --expires 30        # auto-expire in 30 days
+ish study share s-… --json              # { token, share_url, expires_at, created_at, id }
+
+# manage links
+ish study share --list                  # all your links: token, study, expires, revoked
+ish study unshare Hk9_… --yes           # revoke by RAW TOKEN — URL stops working
+```
+
+The `share_url` host is the web frontend (built server-side) — use it
+verbatim; don't reconstruct it. Deep dive: `ish docs get-page concepts/sharing`.
 
 ## 2. Quick A/B ask with image variants
 
@@ -800,6 +861,12 @@ table, projection shapes, and the defensive null-handling rules.
 - For `ask` write-paths (update/archive/wait/add-questions/add-people),
   default JSON is compact (changed fields + alias). Pass `--verbose` for
   the full Ask payload.
+- The `ish study create`/`update --json` echo always shows
+  `assignments` and `interview_questions` — `[]` when the study has
+  none, never dropped. Trust it: an empty `assignments` means you
+  genuinely created a study with no assignment (add one before
+  `study run`, or it fails with "Study has no assignments"); you don't
+  need a follow-up `study get --verbose` to tell "none" from "stripped".
 - `person generate --json` returns `{job: {id, status, person_ids},
   profiles: [...]}`; each person is the lean person shape with its
   evidence-grounded `scenarios` attached (`--no-scenarios` to omit,

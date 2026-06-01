@@ -28,7 +28,7 @@ ish <command> --help
 | `mcp`       | Wire the hosted ish MCP server into local AI    | guides/mcp-add              |
 |             | clients (Cursor, VS Code, Claude Code,          |                             |
 |             | Claude Desktop, Windsurf). Idempotent.          |                             |
-| `login`     | Browser-based auth. Idempotent: short-circuits on valid saved token. `--force` to switch accounts. | —                           |
+| `login`     | Browser-based auth. Idempotent: short-circuits only when the saved token is unexpired AND server-accepted. `--force` to switch accounts. | —                           |
 | `logout`    | Clear saved credentials                         | —                           |
 | `status`    | Show active session (user, workspace,           | concepts/active-context     |
 |             | study, ask, token validity) — alias `whoami`    |                             |

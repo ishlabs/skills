@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.23.1"
+  version: "0.24.0"
 ---
 # ish
 
@@ -182,6 +182,10 @@ The most common multi-turn question: "user wants to change X — re-use the exis
 
 When in doubt: side-by-side comparison usually beats in-place edits. Ids are cheap; result history isn't.
 
+## Sharing results (no-login link)
+
+To hand a study to someone **without an ish account** — a prospect, a stakeholder — create a public share link. `ish study share [study]` prints a no-login `share_url` to the web viewer (summary, key insights, participant journeys, interactive frames, segment breakdowns). `ish study share --list` lists your links; `ish study unshare <token>` revokes one (takes the **raw token**, not a study id/alias). `--expires <days>` auto-expires the link. Brand the link by setting a workspace logo first: `ish workspace update <id> --logo <url>` — the logo shows on the shared page. Share **after** the study has run + been analyzed, so the viewer renders the summary + insights. Deep dive: `ish docs get-page concepts/sharing`. (CLI-only — the MCP has no share tool yet.)
+
 ## Pitfalls
 
 - **Cold start on free plan**: `workspace_create` returns `usage_limit_reached` at the free-plan cap (1 workspace). Always inspect with `workspace_list` first. **MCP-only recipe** (no `--ensure` available): `workspace_list` → if non-empty, use the first; if empty, `workspace_create`; if `workspace_create` returns `usage_limit_reached`, re-call `workspace_list` (a workspace exists you didn't see — possibly created by another session). **CLI shortcut**: `ish workspace create --name <name> --ensure` is idempotent by name.
@@ -197,9 +201,10 @@ When in doubt: side-by-side comparison usually beats in-place edits. Ids are che
 - **No per-page/per-timestamp scoping for media**: there's no "evaluate just slide 14" or "react to seconds 0-30" API. State the focus explicitly in the `assignment` text, or pre-stitch the artifact (e.g. replace one slide locally, upload as a new iteration).
 - **`study get --json` participants live at the top level**, not nested under `iterations[*].participants`. The backend split made `/studies/{id}` lite (metadata + iteration shells, no participant graph) and added `/studies/{id}/participants`; the CLI joins them so `study get --json` carries a flat `participants[]` with `iteration_id` on each row. Read `.participants[]`, not `.iterations[].participants[]`.
 - **All destructive deletes require `--yes` in non-TTY mode**: `ish workspace delete`, `study delete`, `ask delete`, `person delete`, `source delete`, `chat endpoint delete`. In `--json` mode (or any piped/non-TTY invocation), omitting `--yes` refuses with `error_kind: "ConfirmationRequired"` + an `example` field showing the same command with `--yes` appended. `workspace delete` is the highest-blast-radius: it removes ALL nested studies, asks, people, secrets, configs, sources, and chat endpoints — the prompt names them explicitly.
-- **`ish login` is idempotent**: with a valid saved token, `ish login` short-circuits with "Already logged in" and **does not open a new browser tab**. Use `--force` (or `-f`) only when actually switching accounts.
+- **`ish login` is idempotent**: with a saved token that is unexpired *and* still accepted by the API, `ish login` short-circuits with "Already logged in" and **does not open a new browser tab**. If the token is unexpired but the server rejects it (revoked, rotated signing key, or minted against the wrong env — e.g. a dev-Supabase token while calling the prod api), it re-runs the browser flow instead of falsely reporting success. Use `--force` (or `-f`) only when actually switching accounts.
 - **`ish person create` accepts inline flags** (mirrors `person update`): the file-only API (`--file <path>`) is preserved as an escape hatch but the common path is `ish person create --name "X" --type ai --country US ...` — `--type` defaults to `ai` when `--file` is omitted. See `ish person create --help` for the full inline-flag set including `--household` (MECE rule applies) and `--accessibility-profile`.
 - **`ish status` now surfaces `chat_endpoint`** alongside `workspace`/`study`/`ask`. Stale or orphan active refs get a `warning` + `hint` field on the affected ref (instead of silently dropping the `name`). On `workspace use <other>`, the CLI cascade-clears `study`/`ask`/`chat_endpoint` (they belong to the previous workspace).
+- **Share link URL host ≠ API host**: `ish study share` prints the backend-built `share_url` (the web frontend host). Use it verbatim — never reconstruct the URL from the API host or app URL; they differ. `ish study unshare` takes the **raw token** (from `study share` / `study share --list`), not a study id or alias.
 
 ## When in doubt
 

@@ -1,6 +1,6 @@
 source: https://github.com/ishlabs/ish-cli
-cli-version: 0.23.1
-commit: 1c3194796245a284d405c5c0173e660be42135fb
-generated-at: 2026-05-27T16:38:16.090Z
+cli-version: 0.24.0
+commit: c0b78225d415bf2c32ce4194d80ebb9b03b419a6
+generated-at: 2026-06-01T14:25:22.765Z
 
 Do not hand-edit. Run `scripts/generate-skills-repo.mjs` in ish-cli to regenerate.
