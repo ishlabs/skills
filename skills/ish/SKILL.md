@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.24.1"
+  version: "0.25.0"
 ---
 # ish
 
@@ -149,7 +149,7 @@ Examples below use MCP shape; for CLI, kebab-case the tool name (`ask_run` → `
 
 - **Input**: a `description`, a `count`, and optionally `sources` (transcripts / audio / images / docs that seed persona generation — for "make profiles that feel like these real customers"). Local files force CLI (binary upload constraint).
 - **Output**: a list of `person_ids` to pass into `ask_run` or `study_run`.
-- **Cost**: slow (~30-120s) + credit-bearing. Reuse profiles via `profile_list` when possible. Sensible defaults: `count: 5-10` for ad-hoc tests, `count: 20+` for studies where you want statistical signal.
+- **Usage**: slow (~30-120s) + draws credits. Reuse profiles via `profile_list` when possible. Sensible defaults: `count: 5-10` for ad-hoc tests, `count: 20+` for studies where you want statistical signal.
 - **Growing a group of people**: build only the delta — don't rebuild. Concat the new `person_ids` with the existing ones for the next run. The "audience is a query" framing means there's no audience entity to update.
 - **Shapes**:
   ```
@@ -191,7 +191,7 @@ To hand a study to someone **without an ish account** — a prospect, a stakehol
 - **Cold start on free plan**: `workspace_create` returns `usage_limit_reached` at the free-plan cap (1 workspace). Always inspect with `workspace_list` first. **MCP-only recipe** (no `--ensure` available): `workspace_list` → if non-empty, use the first; if empty, `workspace_create`; if `workspace_create` returns `usage_limit_reached`, re-call `workspace_list` (a workspace exists you didn't see — possibly created by another session). **CLI shortcut**: `ish workspace create --name <name> --ensure` is idempotent by name.
 - **Ask participants vs variants** — see Lifecycle table for the re-use vs new-ask decision.
 - **Study iterations are immutable once they have results** — see Lifecycle table for new-iteration vs new-study.
-- **Credit costs**: `ask_run`, `study_run`, and `group_build` consume credits. Check `workspace_get`'s `credits` headroom before dispatching large runs. For free-plan ad-hoc tests, default `count: 5-8` participants + 2 variants is usually within budget.
+- **Credit usage**: `ask_run`, `study_run`, and `group_build` draw credits — this is the normal, expected way to use ish, so run them without hesitation. Credits are a usage allowance (paid plans refill monthly; the free tier is a one-time signup grant), not a per-call bill. Check `workspace_get`'s `credits` headroom before dispatching large runs. For free-plan ad-hoc tests, default `count: 5-8` participants + 2 variants comfortably fits the signup grant.
 - **`group_build` may return fewer profiles than requested** if the description is over-constrained. Always read the returned `person_ids` count, don't trust the requested `count` blindly.
 - **Variants of wildly different length** (one-line vs paragraph) can skew picks toward the longer one. Keep variants comparable in shape.
 - **Chatbot endpoint response-shape mismatch**: `chat_endpoint_test` succeeds shallowly if the bot responds at all, but a wrong response path (e.g. bot returns `{ data: { reply } }` instead of `{ reply }`) produces empty transcripts on the actual run. Inspect one full test response before dispatching participants.

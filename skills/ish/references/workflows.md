@@ -629,12 +629,13 @@ ish study results <study-id> --transcript <participant-id> --json
 
 ## 9. Stage an ask for human review, then dispatch
 
-Goal: prepare a billable A/B but let the user inspect and approve the
-people + prompt before any credits are spent. Two-step flow with a
-DRAFT status in between.
+Goal: prepare an A/B but let the user inspect and approve the
+people + prompt before any credits are drawn. Two-step flow with a
+DRAFT status in between. (Drawing credits to run an ask is normal — the
+draft step is for human review, not to avoid the credit usage.)
 
 ```bash
-# 1. Stage. No worker enqueued, no bill. Audience flags are still
+# 1. Stage. No worker enqueued, no credits drawn. Audience flags are still
 #    required — participants materialize at create time.
 ASK=$(ish ask create --name "tagline AB" \
         --prompt "Which sounds better?" \
@@ -648,7 +649,7 @@ ASK=$(ish ask create --name "tagline AB" \
 #   ish ask get "$ASK"            # status: draft
 #   ish ask get "$ASK" --json | jq '.participants | length'
 
-# 2. Dispatch once approved (BILLABLE). Idempotent: a non-DRAFT ask
+# 2. Dispatch once approved (draws credits). Idempotent: a non-DRAFT ask
 #    returns 409 mapped to exit 2, so re-running is safe.
 ish ask dispatch "$ASK" --wait
 ```
@@ -731,7 +732,7 @@ Rules to remember:
   untouched. Get the new id from `.participant_id` / `.participant_alias` on
   `--json`.
 - `--add-steps` is **only** the extra budget; it does NOT include the
-  source's original cap. Credits debit per
+  source's original cap. Credits draw per
   `max(1, round(additional_steps / 10))` — same formula as
   `study run` interactive, just scoped to the extension.
 - `--instruction` accepts three input shapes (matching the rest of
@@ -742,7 +743,7 @@ Rules to remember:
   `study run`. Extend always inherits the source's iteration config.
 
 See `ish docs get-page concepts/extending-a-simulation` for the full
-mental model (cancel + extend as a pair, error envelopes, cost model).
+mental model (cancel + extend as a pair, error envelopes, credit model).
 
 ## 12. Slice study results by frame / segment / turn / sentiment
 
