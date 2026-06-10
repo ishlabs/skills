@@ -34,6 +34,7 @@ ish <command> --help
 |             | study, ask, token validity) — alias `whoami`    |                             |
 | `connect`   | Cloudflare tunnel exposing localhost            | —                           |
 | `upgrade`   | Self-update                                     | —                           |
+| `feedback`  | Report a bug / feature request / note to the ish team. `--health` attaches setup checks + local-sim logs. | guides/feedback |
 
 ## Discovering flags safely
 

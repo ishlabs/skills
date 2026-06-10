@@ -898,6 +898,14 @@ table, projection shapes, and the defensive null-handling rules.
   confirmed. The orphan-tunnel-on-startup-404 bug is fixed.
 - The `Warning: Could not verify token (network error). Proceeding
   anyway.` stderr line is gone on green runs.
+- On a **genuine fault** (uncategorized client error, 5xx/`server`,
+  network, unknown throw) the error envelope adds a `report` field and
+  human mode prints a `→ Looks like a bug? Report it: …` line. File it
+  with `ish feedback "what you were doing"` (add `--health` for
+  local/native-run bugs). The nudge is deliberately silent on
+  user-actionable errors (usage, validation, auth, not-found,
+  usage-limit), so when you see it, it's worth reporting. See
+  guides/feedback.
 
 ## Common reshaping → use the CLI, not jq/python
 
