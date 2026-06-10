@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.27.0"
+  version: "0.27.1"
 ---
 # ish
 
@@ -205,8 +205,11 @@ To hand a study to someone **without an ish account** — a prospect, a stakehol
 - **`ish person create` accepts inline flags** (mirrors `person update`): the file-only API (`--file <path>`) is preserved as an escape hatch but the common path is `ish person create --name "X" --type ai --country US ...` — `--type` defaults to `ai` when `--file` is omitted. See `ish person create --help` for the full inline-flag set including `--household` (MECE rule applies) and `--accessibility-profile`.
 - **`ish status` now surfaces `chat_endpoint`** alongside `workspace`/`study`/`ask`. Stale or orphan active refs get a `warning` + `hint` field on the affected ref (instead of silently dropping the `name`). On `workspace use <other>`, the CLI cascade-clears `study`/`ask`/`chat_endpoint` (they belong to the previous workspace).
 - **Share link URL host ≠ API host**: `ish study share` prints the backend-built `share_url` (the web frontend host). Use it verbatim — never reconstruct the URL from the API host or app URL; they differ. `ish study unshare` takes the **raw token** (from `study share` / `study share --list`), not a study id or alias.
-- **Native app iterations (ios/android) name the app, not a URL**: `ish iteration create --platform ios --app <bundle-id>` stores the target as `app_artifact` (no URL). The iteration remembers it, so `ish study run --local` needs **no `--app` on reruns** (it defaults from the iteration). Pass `--app <path-to.app|.apk>` only to override with a fresh local build. `--app` is optional at create time (omit it for "chosen at run time"). Only `browser`/`figma` iterations require `--url`.
-- **Local runs have no server-side screenshots**: `ish study run --local` (including ios/android) writes a per-step HTML debug report to `~/.ish/debug/sim-*.html` (path printed at the end of the run) instead of pushing screenshots to the server. `ish study screenshots list` on a local-only study finds none — open the debug report instead.
+- **Native app iterations (ios/android) name the app, not a URL**: `ish iteration create --platform ios --app <bundle-id>` stores the target as `app_artifact` (no URL). `screen_format` defaults to **mobile_portrait** for native (vs desktop for browser). The iteration remembers it, so `ish study run --local` needs **no `--app` on reruns** (it defaults from the iteration). Pass `--app <path-to.app|.apk>` only to override with a fresh local build. `--app` is optional at create time (omit it for "chosen at run time"). Only `browser`/`figma` iterations require `--url`. Full walkthrough: `ish docs get-page guides/native-app`.
+- **Native runs reset state per participant only with a local .app**: with a local `.app`/`.apk` the runner uninstall+reinstalls before each participant (no state leak). A bare bundle-id / system app (e.g. `com.apple.reminders`) can't be reinstalled — it relaunches and warns once that earlier-participant state may persist; pass `--app <.app>` or run one participant per study for a clean start.
+- **Parallel native runs**: `ish study run --local --platform ios|android --parallel N` drives a **pool of N devices** (iOS: reuses booted simulators + auto-creates the shortfall; Android: reuses online emulators + auto-launches headless emulators from your AVDs), one participant per device, and tears down only what it started. N auto-sizes to host RAM; default 1, max 5 — small machines run fewer + queue, never error. Android needs just **one AVD** (the pool clones it via file-copy — no JDK — and deletes the clones). Browser `--parallel` is unchanged.
+- **Local runs still capture per-interaction screenshots**: `ish study run --local` (including ios/android) does NOT populate the remote frame-grouped index (`ish study screenshots list` reads that and won't show local frames), but per-interaction screenshots ARE captured — read them via `ish study get <id>` (each interaction carries `screenshot_url`) or the per-step HTML debug report at `~/.ish/debug/sim-*.html` (path printed at the end of the run).
+- **`<entity> use --json` is capturable**: `study use`/`workspace use`/`ask use` print the human confirmation to stderr and an `{id, alias, name, active}` object to stdout under `--json`, so `ish study use s-… --json --get alias` works.
 
 ## When in doubt
 
