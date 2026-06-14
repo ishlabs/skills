@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.28.1"
+  version: "0.28.2"
 ---
 # ish
 
@@ -100,6 +100,32 @@ Examples below use MCP shape; for CLI, kebab-case the tool name (`ask_run` → `
   study_run({ study_id: "s-…", audience: { person_ids: [...] }, count: 15, wait: true })
   ```
 - **Output**: per-participant journey transcripts + aggregate friction / blocker / positive-moment counts.
+- **Local web app?** Prefer `ish study run --local` (CLI) — it runs the browser ON your machine (Playwright) against the iteration URL, including a plain `http://localhost:3000`, **no tunnel needed**. `ish connect <port>` (a Cloudflare tunnel) is only for letting the **remote** cloud fleet reach your localhost. See workflow §7.
+
+### Test a native iOS / Android app on a local device → `study_run --local` (interactive, CLI-only)
+
+- **Precursors**:
+  1. Local toolchain ready: `ish check ios` / `ish check android` (Xcode + simulators / adb + an AVD); `ish setup` installs the missing local-sim deps. These gate the run — `ish check ios || ish setup`.
+  2. A study (`study_create({ modality: "interactive", assignment: "..." })`) — platform-agnostic; the **iteration** names the platform + app.
+  3. A native iteration: `ish iteration create --platform ios|android --app <bundle-id | ./Build.app | ./app.apk>` (stored as `app_artifact`; **no `--url`**; `screen_format` defaults to mobile_portrait). `--app` is optional at create time — supply it on the run instead for "chosen at run time".
+- **CLI-only**: native local runs are a CLI feature; there is no MCP `*_run --local` path.
+- **Load-bearing knobs** (on `ish study run`):
+  - `--local` — run on your machine (vs the remote cloud fleet). Required for native device runs.
+  - `--platform ios|android` — defaults to the iteration's; override per run.
+  - `--app <path>` — override the stored target with a fresh local build, or supply one when the iteration stored none.
+  - `--parallel N` — drive a pool of N devices at once (auto-sized to host RAM, default 1, max 5); one participant per device, torn down after.
+  - `--max-interactions <n>` — cap the per-participant on-device loop (default 20). The lever that bounds runtime + cost.
+  - `--wait` — block until participants are terminal and return per-participant results (same as remote `--wait`).
+- **State reset between participants**: with a local `.app`/`.apk` the runner uninstall+reinstalls before each participant (no state leak); a bare bundle-id / system app can't be reinstalled and warns once that earlier state may persist.
+- **Shape**:
+  ```bash
+  ish check ios || ish setup
+  ish study create --name "Onboarding" --modality interactive \
+      --assignment "Explore:Open the app and look around" --question "How clear was it?"
+  ish iteration create --platform ios --app ./Build/MyApp.app
+  ish study run --local --platform ios --max-interactions 15 --all -y --wait
+  ```
+- **Output**: per-participant journey + sentiment + per-interaction screenshots (`ish study get <id>`, each interaction carries `screenshot_url`). Full walkthrough: `ish docs get-page guides/native-app`.
 
 ### Probe a customer chatbot → `study_run` (modality: chat, mode: external_chatbot)
 
@@ -188,28 +214,15 @@ To hand a study to someone **without an ish account** — a prospect, a stakehol
 
 ## Pitfalls
 
-- **Cold start on free plan**: `workspace_create` returns `usage_limit_reached` at the free-plan cap (1 workspace). Always inspect with `workspace_list` first. **MCP-only recipe** (no `--ensure` available): `workspace_list` → if non-empty, use the first; if empty, `workspace_create`; if `workspace_create` returns `usage_limit_reached`, re-call `workspace_list` (a workspace exists you didn't see — possibly created by another session). **CLI shortcut**: `ish workspace create --name <name> --ensure` is idempotent by name.
-- **Ask participants vs variants** — see Lifecycle table for the re-use vs new-ask decision.
-- **Study iterations are immutable once they have results** — see Lifecycle table for new-iteration vs new-study.
-- **Credit usage**: `ask_run`, `study_run`, and `group_build` draw credits — this is the normal, expected way to use ish, so run them without hesitation. Credits are a usage allowance (paid plans refill monthly; the free tier is a one-time signup grant), not a per-call bill. Check `workspace_get`'s `credits` headroom before dispatching large runs. For free-plan ad-hoc tests, default `count: 5-8` participants + 2 variants comfortably fits the signup grant.
-- **`group_build` may return fewer profiles than requested** if the description is over-constrained. Always read the returned `person_ids` count, don't trust the requested `count` blindly.
-- **Variants of wildly different length** (one-line vs paragraph) can skew picks toward the longer one. Keep variants comparable in shape.
-- **Chatbot endpoint response-shape mismatch**: `chat_endpoint_test` succeeds shallowly if the bot responds at all, but a wrong response path (e.g. bot returns `{ data: { reply } }` instead of `{ reply }`) produces empty transcripts on the actual run. Inspect one full test response before dispatching participants.
-- **Chatbot auth drift**: tokens/sessions baked into `--from-curl` expire. If transcripts come back as identical short error strings, re-run `chat_endpoint_test` and refresh the curl spec.
-- **401 surfaces as fake blocker**: an unauthenticated endpoint produces "participant got stuck on auth screen" — looks like a UX blocker but is config. Always confirm endpoint auth before reading transcripts as user-research data.
-- **Don't poll a stuck run forever**: a participant whose worker died will sit in `status: running` until the backend reaper transitions it to `failed, error_kind: stale_worker` (~15 min). The per-participant status payload exposes `age_seconds` (server-computed from `started_at`); once it's above ~900s on a non-terminal row, the run is almost certainly stuck. The CLI's `wait_timeout` envelope explicitly flags this case in its `error` message — when you see "the worker likely died," stop polling and surface the failure rather than retrying. `error_kind: self_timeout` is the same idea but written by the worker itself when it self-aborts past its 25-min ceiling.
-- **No per-page/per-timestamp scoping for media**: there's no "evaluate just slide 14" or "react to seconds 0-30" API. State the focus explicitly in the `assignment` text, or pre-stitch the artifact (e.g. replace one slide locally, upload as a new iteration).
-- **`study get --json` participants live at the top level**, not nested under `iterations[*].participants`. The backend split made `/studies/{id}` lite (metadata + iteration shells, no participant graph) and added `/studies/{id}/participants`; the CLI joins them so `study get --json` carries a flat `participants[]` with `iteration_id` on each row. Read `.participants[]`, not `.iterations[].participants[]`.
-- **All destructive deletes require `--yes` in non-TTY mode**: `ish workspace delete`, `study delete`, `ask delete`, `person delete`, `source delete`, `chat endpoint delete`. In `--json` mode (or any piped/non-TTY invocation), omitting `--yes` refuses with `error_kind: "ConfirmationRequired"` + an `example` field showing the same command with `--yes` appended. `workspace delete` is the highest-blast-radius: it removes ALL nested studies, asks, people, secrets, configs, sources, and chat endpoints — the prompt names them explicitly.
-- **`ish login` is idempotent**: with a saved token that is unexpired *and* still accepted by the API, `ish login` short-circuits with "Already logged in" and **does not open a new browser tab**. If the token is unexpired but the server rejects it (revoked, rotated signing key, or minted against the wrong env — e.g. a dev-Supabase token while calling the prod api), it re-runs the browser flow instead of falsely reporting success. Use `--force` (or `-f`) only when actually switching accounts.
-- **`ish person create` accepts inline flags** (mirrors `person update`): the file-only API (`--file <path>`) is preserved as an escape hatch but the common path is `ish person create --name "X" --type ai --country US ...` — `--type` defaults to `ai` when `--file` is omitted. See `ish person create --help` for the full inline-flag set including `--household` (MECE rule applies) and `--accessibility-profile`.
-- **`ish status` now surfaces `chat_endpoint`** alongside `workspace`/`study`/`ask`. Stale or orphan active refs get a `warning` + `hint` field on the affected ref (instead of silently dropping the `name`). On `workspace use <other>`, the CLI cascade-clears `study`/`ask`/`chat_endpoint` (they belong to the previous workspace).
-- **Share link URL host ≠ API host**: `ish study share` prints the backend-built `share_url` (the web frontend host). Use it verbatim — never reconstruct the URL from the API host or app URL; they differ. `ish study unshare` takes the **raw token** (from `study share` / `study share --list`), not a study id or alias.
-- **Native app iterations (ios/android) name the app, not a URL**: `ish iteration create --platform ios --app <bundle-id>` stores the target as `app_artifact` (no URL). `screen_format` defaults to **mobile_portrait** for native (vs desktop for browser). The iteration remembers it, so `ish study run --local` needs **no `--app` on reruns** (it defaults from the iteration). Pass `--app <path-to.app|.apk>` only to override with a fresh local build. `--app` is optional at create time (omit it for "chosen at run time"). Only `browser`/`figma` iterations require `--url`. Full walkthrough: `ish docs get-page guides/native-app`.
-- **Native runs reset state per participant only with a local .app**: with a local `.app`/`.apk` the runner uninstall+reinstalls before each participant (no state leak). A bare bundle-id / system app (e.g. `com.apple.reminders`) can't be reinstalled — it relaunches and warns once that earlier-participant state may persist; pass `--app <.app>` or run one participant per study for a clean start.
-- **Parallel native runs**: `ish study run --local --platform ios|android --parallel N` drives a **pool of N devices** (iOS: reuses booted simulators + auto-creates the shortfall; Android: reuses online emulators + auto-launches headless emulators from your AVDs), one participant per device, and tears down only what it started. N auto-sizes to host RAM; default 1, max 5 — small machines run fewer + queue, never error. Android needs just **one AVD** (the pool clones it via file-copy — no JDK — and deletes the clones). Browser `--parallel` is unchanged.
-- **Local runs still capture per-interaction screenshots**: `ish study run --local` (including ios/android) does NOT populate the remote frame-grouped index (`ish study screenshots list` reads that and won't show local frames), but per-interaction screenshots ARE captured — read them via `ish study get <id>` (each interaction carries `screenshot_url`) or the per-step HTML debug report at `~/.ish/debug/sim-*.html` (path printed at the end of the run).
-- **`<entity> use --json` is capturable**: `study use`/`workspace use`/`ask use` print the human confirmation to stderr and an `{id, alias, name, active}` object to stdout under `--json`, so `ish study use s-… --json --get alias` works.
+The traps that fail *silently* — wrong/empty results or wasted credits with no error explaining why. The fuller catalog (output-shape quirks, per-flag edge cases, idempotency and CLI-convenience notes) is `ish docs get-page reference/pitfalls`; skim it once before a long session.
+
+- **Billing & the `--yes` gate**: billable verbs (`study run`, `study analyze`, `study extend`, `ask run`/`create`/`dispatch`/`add-round`/`add-questions`/`retry`) AND destructive deletes refuse without `--yes` in `--json`/piped/non-TTY context — the agent default — exiting 2 with `error_kind: "ConfirmationRequired"` and a copy-pasteable `example`. Just pass `-y`, or set `ISH_ASSUME_YES=1` ONCE to pre-authorize spending for the whole session. Credits are an allowance (paid plans refill monthly; the free tier is a one-time grant), not a per-call bill — spend them without hesitation; the gate is for human review, not frugality. The ONE exempt billable path is `ish ask create --no-dispatch` (a draft spends nothing). Quota walls (`usage_limit_reached` / `insufficient_credits`) are exit **1**, NOT exit 3 — don't re-login; the user must upgrade or free credits.
+- **Cold start — the free plan caps at 1 workspace**: `workspace_create` returns `usage_limit_reached` at the cap. CLI shortcut: `ish workspace create --name <x> --ensure` (idempotent by name). MCP (no `--ensure`): `workspace_list` first; if `workspace_create` still hits the cap, re-list — another session may have created one you didn't see. Full recipe: `ish docs get-page guides/cold-start`.
+- **Chat endpoints pass shallowly — validate before you trust transcripts**: `chat_endpoint_test` succeeds if the bot responds *at all*, but a wrong response path (`{data:{reply}}` vs `{reply}`) yields empty transcripts, expired `--from-curl` auth yields identical short error strings, and a 401 surfaces as "participant got stuck on the auth screen" — a config bug wearing a UX-finding costume. Inspect one full `chat_endpoint_test` response before dispatching, and never read auth/empty-reply failures as user-research data. A chat **study** also needs a default chat config first (`ish chat config set --endpoint <ep> --default`) — the endpoint says *which* bot, the config says *how* to converse; `study create --modality chat` errors without it.
+- **`group_build` may return fewer profiles than requested** when the description is over-constrained. Read the returned `person_ids` count — don't trust the requested `count`.
+- **Variants of wildly different length skew the pick** toward the longer one. Keep variants comparable in shape, or the winner reflects length, not preference.
+- **No per-slide / per-timestamp media scoping**: there's no "evaluate just slide 14" or "react to seconds 0-30" API. State the focus in the `assignment` text, or pre-stitch the artifact (swap one slide, upload as a new iteration).
+- **Don't poll a stuck run forever**: a dead worker sits in `status: running` until the backend reaper flips it to `failed` (`error_kind: stale_worker`, ~15 min). The per-participant payload exposes `age_seconds`; above ~900s on a non-terminal row the run is almost certainly dead, and the `--wait` envelope says so ("the worker likely died") — surface the failure, don't retry.
 
 ## When in doubt
 

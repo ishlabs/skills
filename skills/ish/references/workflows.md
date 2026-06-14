@@ -41,8 +41,10 @@ ish study use s-…
 # (Optional) add a SECOND iteration only when you actually want to A/B:
 # ish iteration create --url https://example.com/v2   # auto-named "B" (next letter), not "CLI <date>"
 
-# 6. Run, blocking until done
-ish study run --all --wait
+# 6. Run, blocking until done. study run DRAWS CREDITS, so it needs
+#    --yes (-y) in --json / non-TTY context (the agent default) — without
+#    it the dispatch refuses (exit 2, error_kind ConfirmationRequired).
+ish study run --all -y --wait
 
 # 7. Read results
 ish study results --json | jq .
@@ -68,7 +70,7 @@ ish study create --name "Checkout" --modality interactive \
     --url https://shop.example.com \
     --assignments-file ./assignments.json
 ish study use s-…
-ish study run --all --wait
+ish study run --all -y --wait
 
 # After the run, each step gets a pass-rate rollup:
 ish study get s-…                       # human: "✓ Add to cart 4/5 (80%)" per step
@@ -110,8 +112,9 @@ account. Run + analyze first so the public viewer renders the summary.
 # (optional) brand the workspace — the logo shows on the shared page
 ish workspace update w-… --logo https://logo.clearbit.com/acme.com
 
-# generate the AI summary + key insights (needs ≥5 completed participants)
-ish study analyze s-… --wait
+# generate the AI summary + key insights (needs ≥5 completed participants).
+# study analyze draws credits → needs -y in --json / non-TTY context.
+ish study analyze s-… -y --wait
 
 # create the public, no-login link — the printed share_url is the deliverable
 ish study share s-…
@@ -134,11 +137,12 @@ Goal: ship 30 simulated reactions to two hero images, with a "which do
 you prefer" question.
 
 ```bash
+# ask run DRAWS CREDITS → -y (--yes) required in --json / non-TTY context.
 ish ask run --new --name "hero shots" \
     --prompt "Which feels more premium?" \
     --variant image:./hero-a.png::label=A \
     --variant image:./hero-b.png::label=B \
-    --sample 30 --wants-pick --wait
+    --sample 30 --wants-pick -y --wait
 
 # Read the verdict directly — no comment-parsing required:
 ish ask results --json | jq '.rounds[0].aggregates'
@@ -157,7 +161,7 @@ Add a follow-up round with no participant change:
 ish ask run --prompt "Which one would you click on?" \
     --variant image:./hero-a.png::label=A \
     --variant image:./hero-b.png::label=B \
-    --wait
+    -y --wait
 ```
 
 ## 3. Generate profiles from a real source
@@ -266,19 +270,20 @@ printf %s "$STAGING_PW" | ish workspace site-access basic-auth \
 Goal: same study, same iteration, but compare groups.
 
 ```bash
+# study run DRAWS CREDITS → -y (--yes) required in --json / non-TTY context.
 # First run — Swedish 35-50:
-ish study run --country SE --min-age 35 --max-age 50 --sample 5 --wait
+ish study run --country SE --min-age 35 --max-age 50 --sample 5 -y --wait
 
 # Second run — every female person in the workspace, same iteration:
-ish study run --gender female --all --wait
+ish study run --gender female --all -y --wait
 
 # Free-text filters: --search matches the person **name**, --bio
 # matches the person **bio**, --occupation matches the person
 # **occupation** (repeatable, OR-joined). All are case-insensitive
 # substrings — the same flag set works on `ish person list`,
 # `ish ask run`, `ish ask add-people`, and `ish ask create`.
-ish study run --bio "screen reader" --all --wait
-ish study run --occupation founder --occupation designer --sample 6 --wait
+ish study run --bio "screen reader" --all -y --wait
+ish study run --occupation founder --occupation designer --sample 6 -y --wait
 ```
 
 If you don't pass any people flags, `ish study run` reuses the
@@ -287,8 +292,33 @@ target page.
 
 ## 7. Localhost target (dev environment)
 
-Expose a port via a Cloudflare tunnel; `ish connect` prints the public
-URL the study iteration can point at. `connect` is foreground and
+**Disambiguation:** `ish study run --local` runs the browser ON your
+machine (Playwright) against the iteration URL — including a plain
+`http://localhost:3000`, **no tunnel needed**. `ish connect <port>`
+opens a Cloudflare tunnel so Ish's **remote** simulators (browser in the
+cloud) can reach your localhost. **For a local web app, prefer
+`study run --local`;** reach for `connect` only when you specifically
+want the remote fleet.
+
+### 7a. Local web app — `study run --local` (no tunnel)
+
+Point the iteration at your local URL and add `--local`. `--wait`
+blocks until participants are terminal and returns per-participant
+results (same as a remote `--wait`).
+
+```bash
+ish iteration create --url http://localhost:3000
+# study run draws credits → -y in --json/non-TTY. --local runs the browser
+# on this machine; --wait blocks to terminal and emits results.
+ish study run --local --sample 3 -y --wait
+```
+
+(For a native iOS/Android local device run, see §13.)
+
+### 7b. Remote fleet against localhost — `ish connect` tunnel
+
+Only when you need the cloud fleet to reach your localhost. `ish connect`
+prints a public URL the iteration points at. `connect` is foreground and
 long-running — keep it open in a separate terminal (or background it).
 
 ```bash
@@ -298,7 +328,7 @@ ish connect 3000
 
 # Terminal B — use the URL:
 ish iteration create --url https://<random>.trycloudflare.com
-ish study run --sample 3 --wait
+ish study run --sample 3 -y --wait   # study run draws credits → -y in --json/non-TTY
 ```
 
 For agents/scripts, run `connect` in the background with `--json` and
@@ -324,9 +354,9 @@ The chat modality has **two modes**, picked by
   iteration: equal counts zip 1:1 by index, or one side of 1
   broadcasts across the other (1 × N → N conversations). Useful for rehearsing
   a sales call, a fundraising chat, a difficult conversation, or any
-  two-role scenario before it happens. See section 7b below.
+  two-role scenario before it happens. See section 8b below.
 
-### 7a. external_chatbot — drive a customer chatbot endpoint
+### 8a. external_chatbot — drive a customer chatbot endpoint
 
 Goal: configure a customer chatbot endpoint, smoke test it, and run
 a chat-modality study end to end. The CLI talks to the endpoint
@@ -365,12 +395,18 @@ ish chat endpoint get "$ID" --verbose \
   | jq '.config.incoming.slots += [{"containerPath": "response.options", "kind": "alternatives"}]' \
   | ish chat endpoint update "$ID" --endpoint-config -
 
-# 4. Run a chat-modality study referencing the endpoint. Audience size
+# 4. A chat STUDY needs a DEFAULT CHAT CONFIG first — the endpoint alone
+#    is not enough. Set one before study create (else study create
+#    --modality chat errors exit 2 / validation_error):
+ish chat config set --endpoint "$ID" --default
+
+# 5. Run a chat-modality study referencing the endpoint. Audience size
 #    is set on study run, not study create (--sample, --all, --person).
 STUDY=$(ish study create --modality chat --endpoint "$ID" \
           --name "Sign-up Q1" --assignment "Sign up:Try to sign up" \
         | jq -r .id)
-ish study run --study "$STUDY" --sample 5 --wait
+# study run draws credits → -y required in --json / non-TTY context.
+ish study run --study "$STUDY" --sample 5 -y --wait
 ish study results "$STUDY" --json | jq '.participants'
 ```
 
@@ -418,7 +454,7 @@ you can branch on plan caps before `study create` returns
 The full reference is at `ish docs get-page guides/chat`,
 secrets are at `ish docs get-page concepts/secret`.
 
-### 7b. participant_pair — rehearse a two-AI conversation
+### 8b. participant_pair — rehearse a two-AI conversation
 
 Goal: pit two AI people against each other to see how a
 two-role conversation unfolds — a sales rep vs. a skeptical CTO, a
@@ -636,7 +672,9 @@ draft step is for human review, not to avoid the credit usage.)
 
 ```bash
 # 1. Stage. No worker enqueued, no credits drawn. Audience flags are still
-#    required — participants materialize at create time.
+#    required — participants materialize at create time. --no-dispatch is
+#    the ONE billable-ask path EXEMPT from the --yes gate (a draft spends
+#    nothing); the gate moves to the dispatch step below.
 ASK=$(ish ask create --name "tagline AB" \
         --prompt "Which sounds better?" \
         --variant text:"Short and punchy." \
@@ -649,9 +687,10 @@ ASK=$(ish ask create --name "tagline AB" \
 #   ish ask get "$ASK"            # status: draft
 #   ish ask get "$ASK" --json | jq '.participants | length'
 
-# 2. Dispatch once approved (draws credits). Idempotent: a non-DRAFT ask
-#    returns 409 mapped to exit 2, so re-running is safe.
-ish ask dispatch "$ASK" --wait
+# 2. Dispatch once approved (draws credits → needs -y in --json/non-TTY).
+#    Idempotent: a non-DRAFT ask returns 409 mapped to exit 2, so
+#    re-running is safe.
+ish ask dispatch "$ASK" -y --wait
 ```
 
 The `status` field on the ask reflects lifecycle (`draft` → `running`
@@ -668,12 +707,15 @@ Goal: drive an A/B in a script, capture aliases without `jq`, and
 still show the human a readable result table at the end.
 
 ```bash
-# Capture mode — bare values, suitable for shell variables.
+# Capture mode — bare values, suitable for shell variables. This is the
+# dispatch path (no --no-dispatch) so it draws credits → pass -y (the
+# --get/--json/non-TTY context would otherwise refuse with
+# error_kind ConfirmationRequired).
 ASK=$(ish ask create --new --name "tagline AB" \
         --prompt "Which sounds better?" \
         --variant text:"Short and punchy." \
         --variant text:"A longer, descriptive line." \
-        --sample 30 --wants-pick --get alias)
+        --sample 30 --wants-pick -y --get alias)
 
 # Wait silently — exit code is what matters here.
 ish ask wait "$ASK" --timeout 600 --quiet
@@ -698,9 +740,10 @@ veered off into the wrong flow. Resume it with more steps and an
 optional mid-run instruction — without re-running the whole cohort.
 
 ```bash
-# 1. Source run with a small cap to feel the limit:
-ish study run --sample 1 --max-interactions 5 --wait
-SRC=$(ish study run --sample 1 --max-interactions 5 --wait \
+# 1. Source run with a small cap to feel the limit (study run draws
+#    credits → -y in --json / non-TTY context):
+ish study run --sample 1 --max-interactions 5 -y --wait
+SRC=$(ish study run --sample 1 --max-interactions 5 -y --wait \
         --get participant_aliases | head -1)
 
 # 2. Inspect what stopped (optional, useful for the LLM to choose
@@ -816,6 +859,59 @@ Rules to remember:
 See `ish docs get-page guides/slicing-results` for the full filter
 table, projection shapes, and the defensive null-handling rules.
 
+## 13. Native app study (iOS / Android, local device)
+
+Goal: run a study against a native app on a local simulator/emulator
+with the browser-less, on-device runner. **CLI-only** — there is no MCP
+`*_run --local` path. `ish study run --local` drives the device on
+**your machine** (no tunnel; `ish connect` is for the remote cloud
+fleet, not this).
+
+```bash
+# 1. Preflight the local toolchain (Xcode + simulators for iOS, adb + an
+#    AVD for Android). It exits non-zero on a blocking gap, so it gates;
+#    ish setup installs the missing local-sim deps.
+ish check ios || ish setup
+
+# 2. Study is platform-agnostic (assignments + questions); the ITERATION
+#    names the platform + app. modality is interactive.
+ish study create --name "Onboarding" --modality interactive \
+    --assignment "Explore:Open the app and sign up" \
+    --question "How clear was the first screen?"
+ish study use s-…
+
+# 3. Native iteration — --app is a bundle id (installed/system app) OR a
+#    local .app/.apk path. No --url. screen_format defaults to
+#    mobile_portrait for native.
+ish iteration create --platform ios --app ./Build/MyApp.app
+# (or: --platform android --app ./app-debug.apk, or a bundle id)
+
+# 4. Run locally. --local runs on this machine; --platform defaults from
+#    the iteration; --max-interactions caps the per-participant on-device
+#    loop (default 20) → bounds runtime + cost; --wait blocks until
+#    participants are terminal and RETURNS per-participant results (same
+#    as a remote --wait). study run draws credits → -y in --json/non-TTY.
+ish study run --local --platform ios --max-interactions 15 -y --wait
+
+#    Parallelism: --parallel N drives a pool of N devices at once
+#    (auto-sized to host RAM, default 1, max 5), one participant each.
+ish study run --local --platform ios --all --parallel 3 -y --wait
+
+# 5. Read results + per-interaction screenshots. (Results lag the device
+#    loop by a few seconds — the run finalizes server-side; if a bare
+#    results read right at the end looks empty, re-read. --wait already
+#    blocks through finalization.)
+ish study results s-… --json | jq '{sentiment: .summary, failed: .failed_count}'
+ish study get s-… --json | jq -r '.participants[].interactions[].screenshot_url'
+```
+
+**State reset between participants**: a local `.app`/`.apk` is
+uninstall+reinstalled before each participant (no state leak); a bare
+bundle-id / system app can't be reinstalled — it relaunches and warns
+once that earlier-participant state may persist (pass `--app <.app>` or
+run one participant per study for a clean start). Full reference:
+`ish docs get-page guides/native-app`.
+
 ## Tips for chaining commands as an agent
 
 - Capture aliases from JSON: `ITER=$(ish iteration create --url … --json | jq -r .alias)`
@@ -858,7 +954,15 @@ table, projection shapes, and the defensive null-handling rules.
   parity with `study results --json`).
 - Use `--fields` to keep JSON tight: `ish study list --fields alias,name,status`
 - Always pass `--wait` (or `ish study wait`) before reading
-  `ish study results` — without it you may read partial data.
+  `ish study results` — without it you may read partial data. This
+  holds for `--local` too: `ish study run --local --wait` blocks
+  until participants are terminal and emits per-participant `results`
+  (same as a remote `--wait`); without `--wait` a local run returns
+  only the dispatch envelope (`{participants, participant_ids,
+  mode:"local"}`) and you must poll. Local native results also lag the
+  on-device loop by a few seconds (server-side finalization) — `--wait`
+  already covers it, but a bare immediate `study results` may need a
+  re-read.
 - For `ask` write-paths (update/archive/wait/add-questions/add-people),
   default JSON is compact (changed fields + alias). Pass `--verbose` for
   the full Ask payload.
