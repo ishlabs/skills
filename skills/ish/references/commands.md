@@ -25,6 +25,7 @@ ish <command> --help
 | `check`     | Local-toolchain preflight for `study run --local` (`check ios` / `check android` / `check web`). Exits non-zero on a blocking gap so it gates: `ish check ios \|\| ish setup`. Alias: `doctor`. | guides/native-app |
 | `setup`     | Install the missing local-sim deps surfaced by `ish check` (Xcode toolchain, simulators, adb, Chromium). | guides/native-app |
 | `docs`      | Offline docs for agents                         | (run `ish docs --help`)     |
+| `commands`  | Entire command tree + flags + exit codes as one JSON manifest (`ish commands --json`) | reference/commands |
 | `init`      | Drop this skill into a Claude Code / Codex /    | (run `ish init --help`)     |
 |             | Cursor / Cline / Roo project                    |                             |
 | `mcp`       | Wire the hosted ish MCP server into local AI    | guides/mcp-add              |
@@ -54,7 +55,7 @@ the right `ish docs get-page <slug>` to read deep context.
 ## Aliases
 
 Short prefixed IDs (e.g. `s-b2c`, `p-795`, `a-6ec`, `i-d4e`,
-`t-a17`, `ps-3a4`, `w-6ec`, `c-c3c`) are accepted anywhere a UUID
+`pt-a17`, `ps-3a4`, `w-6ec`, `c-c3c`) are accepted anywhere a UUID
 is expected. Full UUIDs always work too. See
 `ish docs get-page reference/aliases`.
 
@@ -66,6 +67,7 @@ is expected. Full UUIDs always work too. See
 | `--human`        | **Force display mode** even when stdout is piped (overrides JSON-when-piped). Mutually exclusive with `--get`. |
 | `--json`         | JSON output (auto-on when stdout is piped)               |
 | `--fields a,b`   | Keep only listed fields in JSON                          |
+| `--list-fields`  | Print the projectable field names (`{"fields":[...]}`) instead of the data — discover the shape without guessing. `--fields ?` is shorthand. |
 | `--verbose`      | Include UUIDs + timestamps in JSON                       |
 | `-q, --quiet`    | Suppress progress messages on stderr                     |
 | `-t, --token`    | Auth token (else ISH_TOKEN env, else `ish login` saved)  |

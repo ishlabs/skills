@@ -24,8 +24,12 @@ ish person generate \
 # 4. Define the study + iteration A in one call (one-shot path).
 #    The same shape works for image (--image-urls), video / audio /
 #    document (--content-url <url>), and chat (--endpoint <id>).
-#    For text/media you can also pass --segmentation-json (+ email-styling
-#    --content-html/--sender-name/--sender-email/--featured-image-url) here,
+#    For text you author with --content-text or --content-md (markdown → the
+#    canonical content_doc block AST) or --content-html (paste-exact branded
+#    email as the ADR-0015 format:html carrier, rendered source-faithful). The
+#    three body flags are mutually exclusive — pass exactly one.
+#    For text/media you can also pass --segmentation-json
+#    (+ email-styling --sender-name/--sender-email/--featured-image-url) here,
 #    so a single SEGMENTED iteration is one call — no separate iteration
 #    create (which would leave an empty A + a redundant B).
 #    Segments are SEMANTIC sections, not paragraphs: group related paragraphs
@@ -983,7 +987,18 @@ run one participant per study for a clean start). Full reference:
   count would exceed the cap; re-issue with a smaller `--count`.
 - Every verb's `--help` ends with a "Tips:" footer naming `--get`
   and `--fields`. If you're reaching for `jq -r .x` you almost
-  certainly wanted `--get x`.
+  certainly wanted `--get x`. Unsure which fields a response carries?
+  `--list-fields` (or `--fields ?`) prints them as `{"fields":[...]}`
+  instead of guessing a name and eating a failed call.
+- **Error envelopes are self-correcting — branch on fields, not prose.**
+  Every failure carries `error_code` + `retryable`; transient/rate-limit
+  failures also carry `retry_after_seconds` (wait that long, then retry —
+  no extra request to discover the backoff), and catalogued codes carry a
+  relative `doc_url` (`reference/errors#<code>`) you can read with
+  `ish docs get-page reference/errors`. That page enumerates every code,
+  both families, with per-code remediation. Still stuck on *why* a call
+  failed? Re-run with `ISH_DEBUG=api` to log the request/response wire
+  (method, URL, masked auth, status, timing) to stderr — stdout stays clean.
 - `ish study run --wait` returns `error_code: "wait_timeout"`
   on wait expiry (exit 5, retryable) — distinct from network /
   server timeouts. The envelope carries `progress` so you can
