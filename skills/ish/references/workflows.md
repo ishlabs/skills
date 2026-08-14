@@ -351,7 +351,7 @@ The chat modality has **two modes**, picked by
 `iteration.details.mode_details.mode`:
 
 - **`external_chatbot`** — participants probe a customer chatbot endpoint
-  (the original chat behaviour). Audience size is set on `study run`.
+  (the original chat behavior). Audience size is set on `study run`.
 - **`participant_pair`** — two AI people converse with each
   other. Each side has its own scenario + goal; the other side does
   not see it (asymmetry contract). Audiences are pinned to the
