@@ -17,7 +17,7 @@ ish <command> --help
 | `study`     | Persistent research artifact                    | concepts/study              |
 | `iteration` | One configured run of a study (URL or media)    | concepts/iteration          |
 | `ask`       | Lightweight reaction artifact                   | concepts/ask                |
-| `person`    | People, people generation, and the `suggest-scenarios` + `evidence add`/`list` probe loop for crafting one specific persona | concepts/person             |
+| `person`    | People, people generation, and the `suggest-scenarios` + `evidence add`/`list` probe loop for crafting one specific person | concepts/person             |
 | `source`    | Upload sources for person generation           | concepts/source             |
 | `config`    | Simulation configs (model, timing, retries)     | (run `ish config --help`)   |
 | `chat`      | Chat endpoint CRUD + smoke test (external_chatbot mode); pair-mode iterations created via `iteration create --chat-mode participant_pair` | guides/chat                 |

@@ -168,16 +168,16 @@ ish ask run --prompt "Which one would you click on?" \
     -y --wait
 ```
 
-## 3. Generate profiles from a real source
+## 3. Generate people from a real source
 
 Goal: turn a customer interview transcript into a 4-person group.
 
 `person generate` is an async agentic job: it reads your brief and any
 uploaded sources (transcripts, emails, PDFs, audio, images) describing how
-real people reacted, then produces profiles PLUS scenarios grounded in those
-reactions. It enqueues, polls ~30-60s, then prints the profiles (with
+real people reacted, then produces people PLUS scenarios grounded in those
+reactions. It enqueues, polls ~30-60s, then prints the people (with
 scenarios attached unless `--no-scenarios`). `--json` returns
-`{job: {person_ids}, profiles: [...]}`.
+`{job: {person_ids}, people: [...]}`.
 
 ```bash
 # Inline — auto-uploads the file:
@@ -198,7 +198,7 @@ ish person generate --source ps-3a4 --count 4
 
 ## 4. Build a specific simulated person from notes
 
-Goal: rebuild one named persona (a real prospect, a stakeholder for
+Goal: rebuild one named person (a real prospect, a stakeholder for
 a pitch rehearsal) via the iterative probe loop — distinct from
 `person generate`, which is for groups.
 
@@ -216,7 +216,7 @@ ish person suggest-scenarios \
 #    Valid source values: situation, voice, binary, micro-story
 
 # 3. Save the person shell — either from file:
-ish person create --file ./persona.json
+ish person create --file ./person.json
 # → p-d4e
 #
 # …or inline (mirror of person update):
@@ -523,7 +523,7 @@ Rules to remember:
   `iteration.conversations[]`. Per-participant summaries land on
   `participant.summary` as before.
 
-### Filtering groups with role criteria (persona-first)
+### Filtering groups with role criteria (person-first)
 
 `--role-criteria-a` / `--role-criteria-b` accept a JSON object (or
 `@./file.json`) describing who's eligible for that side. The
@@ -563,10 +563,10 @@ MECE rules for the list filters:
   activity. A student who works 15 hrs/week is `student`; a retiree
   who freelances is `retired`.
 
-The **persona-first** principle: the participant's persona is sacred and
+The **person-first** principle: the participant's person is sacred and
 the LLM prompt construction does not change. Criteria filter the
 *eligible pool* upstream so that by the time a participant reaches the
-prompt, their persona is already plausible for the role described
+prompt, their person is already plausible for the role described
 in `scenario_*`. Don't cram demographic constraints into the
 scenario text — that breaks the asymmetry contract and produces
 incoherent characters (a retired farmer suddenly "pitching a
@@ -575,7 +575,7 @@ pick who plays the role.
 
 If the resolved pool is smaller than the requested count for a side,
 `ish study run` exits 2 with the backend's pool-too-small error
-intact. Broaden the criteria, generate more profiles
+intact. Broaden the criteria, generate more people
 (`ish person generate`), or fall back to explicit `--person-*`.
 
 ### Rehearsing against N variations of one side (1×N)
@@ -584,7 +584,7 @@ The most common rehearsal shape: fix one side, vary the other.
 "Pitch this once and see how 3 different CTOs respond." Step-by-step:
 
 ```bash
-# 1. Generate N distinct profiles for the varying side (or pick
+# 1. Generate N distinct people for the varying side (or pick
 #    existing ones via `ish person list`).
 ish person generate \
     --description "Skeptical CTO at a Series B SaaS startup" \
@@ -629,7 +629,7 @@ expansion happen.
 **Criteria alternative**: `--role-criteria-b '{"occupation":["cto"]}'`
 on a single `--group-a p-rep` lets the backend pick the CTOs.
 Less control over distinctness — for guaranteed variety, generate
-explicit profiles first.
+explicit people first.
 
 ### Writing scenarios that produce signal
 
@@ -934,8 +934,14 @@ run one participant per study for a clean start). Full reference:
   `participants[]` row. No need to fetch `study participant <id>` per row.
 - `ish study results --summary --json` drops the interview_answers
   payload and gives you counts + sentiment + per-participant
-  {alias, status, sentiment, comment}. The cheapest "did this run land?"
-  shape.
+  {alias, status, sentiment, comment, iteration_id, iteration_label}. The
+  cheapest "did this run land?" shape. For a **multi-iteration** study the
+  headline is scoped to the LATEST iteration (a re-run adds an iteration;
+  `headline_iteration_label` names it, `iteration_breakdown[]` keeps every
+  earlier run's counts visible; pass `--iteration <id>` to read an earlier
+  one). It also carries a `step_pass_rate` scalar + per-assignment
+  `step_completion[]` beside sentiment, so a study whose people felt fine
+  but failed every graded step can't read green.
 - `ish study results --transcript <participant_id> --json` is the
   chat-modality projection — **external_chatbot mode only**. Returns
   a flat `transcript[]` of {role, text, turn_index, action_type?,
@@ -977,7 +983,7 @@ run one participant per study for a clean start). Full reference:
   `study run`, or it fails with "Study has no assignments"); you don't
   need a follow-up `study get --verbose` to tell "none" from "stripped".
 - `person generate --json` returns `{job: {id, status, person_ids},
-  profiles: [...]}`; each person is the lean person shape with its
+  people: [...]}`; each person is the lean person shape with its
   evidence-grounded `scenarios` attached (`--no-scenarios` to omit,
   `--verbose` for the full record incl. `simulation_config`).
 - On `error_code: "usage_limit_reached"` (HTTP 403), don't retry —
@@ -1034,7 +1040,7 @@ run one participant per study for a clean start). Full reference:
 | Capture a nested value                    | `--json \| jq -r .person.name` | `--get person.name`                                        |
 | Capture every alias from a list           | `--json \| jq -r '.items[].alias'`   | `--get alias` (auto-descends into `items`, one per line)            |
 | Force human output through tee/redirect   | none, output silently became JSON      | `--human`                                                          |
-| Look up 2-3 specific profiles             | `person list --json \| jq '.items[] \| select(...)'` | `ish person get p-1b9 p-fc1 p-2fc`                             |
+| Look up 2-3 specific people             | `person list --json \| jq '.items[] \| select(...)'` | `ish person get p-1b9 p-fc1 p-2fc`                             |
 | Show only some fields                     | `--json \| jq '{alias, name, country}'` | `--fields alias,name,country`                                      |
 | Count participants on an ask                   | `--json \| jq '.participants \| length'`  | `ish ask get a-… --fields alias,participants_count`                     |
 | Count responses on a round                | `--json \| jq '.rounds[0].responses \| length'` | `ish ask get a-… --fields alias,rounds,responses_complete,responses_total` |
