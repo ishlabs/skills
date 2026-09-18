@@ -37,7 +37,7 @@ ish <command> --help
 |             | study, ask, signed-in state) — alias `whoami`   |                             |
 | `connect`   | Cloudflare tunnel exposing localhost so Ish's REMOTE fleet can reach it. For a local WEB app, prefer `study run --local` (browser on your machine, no tunnel); use `connect` only for the remote fleet. | concepts/run-verbs |
 | `upgrade`   | Self-update                                     | —                           |
-| `feedback`  | Report a bug / feature request / note to the ish team. `--health` attaches setup checks + local-sim logs. | guides/feedback |
+| `feedback`  | Report a bug / feature request / note to the ish team. Your recent CLI errors are attached automatically; `--health` adds setup checks + local-sim logs. Worth a call after a `→ Looks like a bug?` hint or the tally line a results command prints after several failures. | guides/feedback |
 
 ## Discovering flags safely
 

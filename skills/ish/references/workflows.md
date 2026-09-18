@@ -254,10 +254,14 @@ ish workspace site-access status
 # HTTP basic auth:
 ish workspace site-access basic-auth --username alice --password hunter2
 
-# Session cookie (Vercel preview, Lovable, etc.):
-ish workspace site-access cookie --name session --value abc123
+# Session cookie (Vercel preview, Lovable, etc.); every cookie carries an
+# expiry the worker enforces — derived from the value or a one-hour default
+# unless you pass --expires-at:
+ish workspace site-access cookie --name session --value abc123 \
+    --expires-at 2026-09-19T08:00:00Z
 
-# Login form (typed by the participant into the page):
+# Login form — best effort: the participant types these only if it meets a
+# sign-in form during the task; for a wall use basic-auth or cookie:
 ish workspace site-access login --username demo --password demo
 ```
 
