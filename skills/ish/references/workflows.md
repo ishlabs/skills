@@ -245,14 +245,24 @@ walkthrough including the four probe-type shapes.
 
 ## 5. Target a gated URL (Vercel preview / staging gate / login form)
 
-Configure credentials once on the workspace; participants reuse them.
+Each site holds its own access; a run uses the access of the site its URL
+belongs to. Name the site with `--origin <url>` (created on first use),
+`--site <name>` or `--app <artifact>`; without one, the workspace
+`base_url`. See `ish docs get-page concepts/site-access`.
 
 ```bash
-# Show what's configured:
+# One row per site: hosts, methods, cookie expiry:
 ish workspace site-access status
 
 # HTTP basic auth:
-ish workspace site-access basic-auth --username alice --password hunter2
+ish workspace site-access basic-auth --origin https://staging.example.com \
+    --username alice --password hunter2
+
+# The same site on more hosts (.se, an auth subdomain, localhost; www and
+# bare are already one host). Hosts pick the site; the gate goes to the
+# origin the run opens:
+ish workspace site-access hosts --origin https://staging.example.com \
+    --add staging.example.se,localhost:3000
 
 # Session cookie (Vercel preview, Lovable, etc.); every cookie carries an
 # expiry the worker enforces — derived from the value or a one-hour default
@@ -983,8 +993,9 @@ run one participant per study for a clean start). Full reference:
 - The `ish study create`/`update --json` echo always shows
   `assignments` and `interview_questions` — `[]` when the study has
   none, never dropped. Trust it: an empty `assignments` means you
-  genuinely created a study with no assignment (add one before
-  `study run`, or it fails with "Study has no assignments"); you don't
+  genuinely created a study with no assignment (on an interactive study,
+  add one before `study run`, or it refuses with
+  `study_has_no_tasks`); you don't
   need a follow-up `study get --verbose` to tell "none" from "stripped".
 - `person generate --json` returns `{job: {id, status, person_ids},
   people: [...]}`; each person is the lean person shape with its
