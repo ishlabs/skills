@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.34.1"
+  version: "0.34.2"
 ---
 # ish
 
@@ -220,6 +220,7 @@ The traps that fail *silently* — wrong/empty results or wasted credits with no
 - **Billing & the `--yes` gate**: billable verbs (`study run`, `study analyze`, `study extend`, `ask run`/`create`/`dispatch`/`add-round`/`add-questions`/`retry`) AND destructive deletes refuse without `--yes` in `--json`/piped/non-TTY context — the agent default — exiting 2 with `error_kind: "ConfirmationRequired"` and a copy-pasteable `example`. Just pass `-y`, or set `ISH_ASSUME_YES=1` ONCE to pre-authorize spending for the whole session. Credits are an allowance (paid plans refill monthly; the free tier is a one-time grant), not a per-call bill — spend them without hesitation; the gate is for human review, not frugality. The ONE exempt billable path is `ish ask create --no-dispatch` (a draft spends nothing). Quota walls (`usage_limit_reached` / `insufficient_credits`) are exit **1**, NOT exit 3 — don't re-login; the user must upgrade or free credits.
 - **Cold start — the free plan caps at 1 workspace**: `workspace_create` returns `usage_limit_reached` at the cap. CLI shortcut: `ish workspace create --name <x> --ensure` (idempotent by name). MCP (no `--ensure`): `workspace_list` first; if `workspace_create` still hits the cap, re-list — another session may have created one you didn't see. Full recipe: `ish docs get-page guides/cold-start`.
 - **Chat endpoints pass shallowly — validate before you trust transcripts**: `chat_endpoint_test` succeeds if the bot responds *at all*, but a wrong response path (`{data:{reply}}` vs `{reply}`) yields empty transcripts, expired `--from-curl` auth yields identical short error strings, and a 401 surfaces as "participant got stuck on the auth screen" — a config bug wearing a UX-finding costume. Inspect one full `chat_endpoint_test` response before dispatching, and never read auth/empty-reply failures as user-research data. A chat **study** also needs a default chat config first (`ish chat config set --endpoint <ep> --default`) — the endpoint says *which* bot, the config says *how* to converse; `study create --modality chat` errors without it.
+- **A study run is in English unless you pass a language — the person's country never picks it**: `study run` without `--language <code>` (MCP: `language=`) runs everyone in English, so a Swedish panel answers in English. Anyone can run in any language whatever their country: pass `--language sv` for Swedish, `--language fr` for a Canadian panel in French, and so on. Deep dive: `ish docs get-page concepts/people`.
 - **`person_generate` may return fewer people than requested** when the description is over-constrained. Read the returned `person_ids` count — don't trust the requested `count`.
 - **Variants of wildly different length skew the pick** toward the longer one. Keep variants comparable in shape, or the winner reflects length, not preference.
 - **No per-slide / per-timestamp media scoping**: there's no "evaluate just slide 14" or "react to seconds 0-30" API. State the focus in the `assignment` text, or pre-stitch the artifact (swap one slide, upload as a new iteration).

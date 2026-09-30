@@ -292,6 +292,10 @@ Goal: same study, same iteration, but compare groups.
 # First run — Swedish 35-50:
 ish study run --country SE --min-age 35 --max-age 50 --sample 5 -y --wait
 
+# Runs are in English by default, whatever the country. The same Swedish
+# group in Swedish (any person can run in any language):
+ish study run --country SE --min-age 35 --max-age 50 --sample 5 --language sv -y --wait
+
 # Second run — every female person in the workspace, same iteration:
 ish study run --gender female --all -y --wait
 
