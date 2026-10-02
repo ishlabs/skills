@@ -196,6 +196,35 @@ ish person generate --source ps-3a4 --propose-count
 ish person generate --source ps-3a4 --count 4
 ```
 
+## Narrated experiences for an existing person
+
+The account can report someone else's reaction. Preserve who says what; sources
+support interpretation rather than becoming commands or identity evidence.
+
+```bash
+ish person experience add p-d4e --description-file ./account.md \
+  --source ./proposal.pdf --source ./reply.eml --wait --json
+ish person experience show p-d4e <experience-uuid> --json
+ish person experience approve p-d4e <experience-uuid> --expected-version 1 --json
+# On a timeout, resume accepted work without another decode:
+ish person experience status p-d4e <experience-uuid> --wait --timeout 300 --json
+```
+
+No files is valid; `--sources-file` assigns ordered artifact/reaction/context
+roles and optional labels. PDF, DOCX, TXT, MD, CSV, TSV, EML and PNG/JPEG/WEBP are
+supported (12 sources, 100 MiB per file, 200 MiB total). Files must belong to this
+person. Source manifest paths are relative to the manifest. Narrator and role are
+optional overrides (Account author and selected person's name by default).
+Explain roles and context in the account. Adding starts processing unless
+`--draft` is passed. Decoding is included and never auto-approves. Updates
+return a new draft; withdraw stops using it, including in runs already set up, and retains history.
+`person experience delete <person-id> <experience-id> --yes` erases it permanently
+(revisions, interpretation, unshared files); it cannot be undone.
+Use `add --request-id <uuid>` for recoverable identical-input creation; inspect
+`show` after interruptions before re-uploading local files. `person experience history`
+reads immutable revisions, attribution and approvals.
+See `ish docs get-page concepts/person-experience` for the complete contract.
+
 ## 4. Build a specific simulated person from notes
 
 Goal: rebuild one named person (a real prospect, a stakeholder for
@@ -228,6 +257,13 @@ ish person evidence add p-d4e --traces-file ./answers.json
 
 # 5. Read back what's saved (also useful before the next probe round)
 ish person evidence list p-d4e
+
+# 6. Have real past reactions (an email reply, notes, a chat screenshot)?
+#    Add each as an experience; approve it after review (see above).
+#    Each is a few-shot example: aim for 3-5, keep their own words, and
+#    include rejections (simulations under-predict dissent).
+ish person experience add p-d4e --description-file ./account.md \
+    --source ./reply.eml --wait
 ```
 
 To iterate, feed prior prompts/answers back in so the LLM doesn't
@@ -334,6 +370,12 @@ ish iteration create --url http://localhost:3000
 # on this machine; --wait blocks to terminal and emits results.
 ish study run --local --sample 3 -y --wait
 ```
+
+A loopback or private-network `--url` (`localhost`, `127.0.0.1`,
+`0.0.0.0`, 10.x, 172.16–31.x, 192.168.x) with no `--platform` is stored as `platform: "code"`
+(the web app's "Local server") and still runs in the local browser —
+`study run --local` and `--local --platform web` both accept it. An
+explicit `--platform` wins; any other URL is stored as `browser`.
 
 (For a native iOS/Android local device run, see §13.)
 
@@ -1001,6 +1043,7 @@ run one participant per study for a clean start). Full reference:
   add one before `study run`, or it refuses with
   `study_has_no_tasks`); you don't
   need a follow-up `study get --verbose` to tell "none" from "stripped".
+- `person experience --json` preserves full stable IDs, versions, states, nulls and provenance; list is `{experiences:[...]}`. A decoding timeout returns accepted IDs (exit 5); resume with `status --wait`. Failed decoding returns the failed resource and exit 1. Editing resets approval; approve the specific version you reviewed.
 - `person generate --json` returns `{job: {id, status, person_ids},
   people: [...]}`; each person is the lean person shape with its
   evidence-grounded `scenarios` attached (`--no-scenarios` to omit,

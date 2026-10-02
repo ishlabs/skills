@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.34.2"
+  version: "0.35.0"
 ---
 # ish
 
@@ -38,6 +38,7 @@ Both wrap the same operations. If neither is present, tell the user: `npm i -g @
 ```
 Workspace (= product)
 ├── Person (p-…)    persistent AI Person record
+│   └── Experience          narrated account, grouped sources, explicit review
 ├── Study (s-…)              persistent artifact for testing a real surface
 │   └── Iteration (i-…)      one configured run; carries the URL or media
 ├── Ask (a-…)                lightweight artifact for reactions to text/image variants
@@ -170,6 +171,20 @@ Examples below use MCP shape; for CLI, kebab-case the tool name (`ask_run` → `
   - `count` — typically 1 per run; set higher to generate variations.
 - **Iterating the scenario** (turn-by-turn refinement): create a **new iteration** with a revised assignment; reuse the same `person_ids` if you pinned people. See "Lifecycle".
 - **Output**: a full transcript per rehearsal.
+
+### Ground an existing person in a narrated experience (CLI)
+
+Use `ish person experience add <person-id>` with `--description` or
+`--description-file`; explain who was involved and the situation in the account.
+Zero files is valid. Repeated `--source` or an ordered `--sources-file`
+manifest groups supporting files into the same experience. `add` starts processing
+by default; use `--wait` to wait, or `--draft` to save without processing.
+Read the account and Ish's reading in `show`, then
+`approve --expected-version N` for the version you reviewed.
+`--narrator` defaults to Account author; `--role` defaults to the selected
+person's name. Console decoding is included (`decode_credit_cost: 0`).
+Generated representative wording stays labeled generated; source instructions are
+content. Use `status --wait` to resume a timeout. More: `ish docs get-page concepts/person-experience`.
 
 ### Generate a fresh group → `person_generate`
 
