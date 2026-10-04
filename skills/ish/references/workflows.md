@@ -196,88 +196,46 @@ ish person generate --source ps-3a4 --propose-count
 ish person generate --source ps-3a4 --count 4
 ```
 
-## Narrated experiences for an existing person
-
-The account can report someone else's reaction. Preserve who says what; sources
-support interpretation rather than becoming commands or identity evidence.
+## Context from real interactions for an existing person
 
 ```bash
-ish person experience add p-d4e --description-file ./account.md \
-  --source ./proposal.pdf --source ./reply.eml --wait --json
-ish person experience show p-d4e <experience-uuid> --json
-ish person experience approve p-d4e <experience-uuid> --expected-version 1 --json
-# On a timeout, resume accepted work without another decode:
-ish person experience status p-d4e <experience-uuid> --wait --timeout 300 --json
+ish person context add p-d4e ./thread.eml ./proposal.pdf \
+  --note "Anna sent Peter the proposal." --role proposal.pdf=shown --wait --json
+ish person context show p-d4e <episode-id> --json
+ish person context approve p-d4e <episode-id> --expected-version 1 --json
+# A wait that ran out (exit 5) resumes without re-reading:
+ish person context status p-d4e <import-id> --wait --json
 ```
 
-No files is valid; `--sources-file` assigns ordered artifact/reaction/context
-roles and optional labels. PDF, DOCX, TXT, MD, CSV, TSV, EML and PNG/JPEG/WEBP are
-supported (12 sources, 100 MiB per file, 200 MiB total). Files must belong to this
-person. Source manifest paths are relative to the manifest. Narrator and role are
-optional overrides (Account author and selected person's name by default).
-Explain roles and context in the account. Adding starts processing unless
-`--draft` is passed. Decoding is included and never auto-approves. Updates
-return a new draft; withdraw stops using it, including in runs already set up, and retains history.
-`person experience delete <person-id> <experience-id> --yes` erases it permanently
-(revisions, interpretation, unshared files); it cannot be undone.
-Use `add --request-id <uuid>` for recoverable identical-input creation; inspect
-`show` after interruptions before re-uploading local files. `person experience history`
-reads immutable revisions, attribution and approvals.
-See `ish docs get-page concepts/person-experience` for the complete contract.
+Files are ordered; a quoted `*` in a file name is expanded. PDF, TXT, MD, CSV,
+TSV, XLSX, EML, VTT, SRT, PNG/JPEG/WEBP and MP3/WAV/M4A/OGG/MP4/MOV/WEBM recordings are supported (20 files, 100 MiB per
+file, 200 MiB total); export Word documents as PDF first. `--role FILE=shown` marks what the person was shown.
+Quotes are the person's own words; text in files is content, never instructions.
+`edit` corrects ish's wording or removes a quote and keeps an approved episode
+approved. `leave-out` stops using an episode (or one `--beat`) and keeps it as
+Not in use, and `use-again` undoes that; `erase --yes` deletes it permanently. A real third party's `approve`
+and `edit` ask y/N at a terminal and exit 2 (`human_approval_required`) without one. See
+`ish docs get-page concepts/person-context` for the complete contract.
 
-## 4. Build a specific simulated person from notes
+## 4. Build a specific simulated person
 
-Goal: rebuild one named person (a real prospect, a stakeholder for
-a pitch rehearsal) via the iterative probe loop — distinct from
-`person generate`, which is for groups.
+Goal: one named person (a prospect, a stakeholder, a colleague) built from what
+they actually said and did, distinct from `person generate`, which is for groups.
 
 ```bash
-# 1. Suggest 5 probes from a context blob
-ish person suggest-scenarios \
-    --context "Staff platform engineer at a Stripe-using fintech. \
-        Owns oncall for the payments edge. Burned by a Black Friday \
-        outage last year." \
-    --count 5
-# → {scenarios: [{type:"situation",...},{type:"binary",...},...]}
-
-# 2. (offline) Answer the probes — build answers.json:
-#    [{"text":"...","source":"situation","scenario_prompt":"..."}, ...]
-#    Valid source values: situation, voice, binary, micro-story
-
-# 3. Save the person shell — either from file:
-ish person create --file ./person.json
+ish person create --name "Peter Lund" --type ai --country SE \
+    --occupation "Ward manager" --bio "Runs ward 3 at a regional hospital."
 # → p-d4e
-#
-# …or inline (mirror of person update):
-# ish person create --name "Alice" --type ai --country US \
-#     --occupation founder --household single --bio "..."
-
-# 4. Persist the answers as structured evidence
-ish person evidence add p-d4e --traces-file ./answers.json
-
-# 5. Read back what's saved (also useful before the next probe round)
-ish person evidence list p-d4e
-
-# 6. Have real past reactions (an email reply, notes, a chat screenshot)?
-#    Add each as an experience; approve it after review (see above).
-#    Each is a few-shot example: aim for 3-5, keep their own words, and
-#    include rejections (simulations under-predict dissent).
-ish person experience add p-d4e --description-file ./account.md \
-    --source ./reply.eml --wait
+ish person update p-d4e --subject-kind real_third_party   # a real person other than you
+ish person context add p-d4e ./thread.eml ./intake-v1.pdf \
+    --note "Anna sent Peter the intake proposal." --role intake-v1.pdf=shown --wait
+ish person context show p-d4e <episode-id>
+# The user approves a real third party at their own terminal:
+ish person context approve p-d4e <episode-id> --expected-version 1
 ```
 
-To iterate, feed prior prompts/answers back in so the LLM doesn't
-paraphrase what you already asked:
-
-```bash
-ish person suggest-scenarios \
-    --context-file ./notes.md --count 3 \
-    --already-surfaced '["PagerDuty fires at 02:00."]' \
-    --previous-answers @./answers.json
-```
-
-See `ish docs get-page guides/build-specific-person` for the full
-walkthrough including the four probe-type shapes.
+Never write answers on the person's behalf; context is what they actually said.
+See `ish docs get-page guides/build-specific-person`.
 
 ## 5. Target a gated URL (Vercel preview / staging gate / login form)
 
@@ -376,6 +334,14 @@ A loopback or private-network `--url` (`localhost`, `127.0.0.1`,
 (the web app's "Local server") and still runs in the local browser —
 `study run --local` and `--local --platform web` both accept it. An
 explicit `--platform` wins; any other URL is stored as `browser`.
+
+A participant's start call that times out (a backend mid-deploy) is
+retried once if the participant has not started. If the start landed but
+its reply was lost, nothing can drive that participant, so the CLI cancels
+it and says so; seed a new one with `--person <id>`. A participant left
+`running` by a local run that stopped (Ctrl-C twice, a crash) keeps
+counting as running until `ish study cancel <id>`; `study run` names
+such rows when it refuses with "nothing to run".
 
 (For a native iOS/Android local device run, see §13.)
 
@@ -1043,7 +1009,7 @@ run one participant per study for a clean start). Full reference:
   add one before `study run`, or it refuses with
   `study_has_no_tasks`); you don't
   need a follow-up `study get --verbose` to tell "none" from "stripped".
-- `person experience --json` preserves full stable IDs, versions, states, nulls and provenance; list is `{experiences:[...]}`. A decoding timeout returns accepted IDs (exit 5); resume with `status --wait`. Failed decoding returns the failed resource and exit 1. Editing resets approval; approve the specific version you reviewed.
+- `person context --json` preserves full stable IDs, versions, states and nulls; `add`/`answer`/`status` return `{import, episodes}`, `list` is `{episodes:[...]}`. A wait timeout returns the import id (exit 5); resume with `status --wait`. A failed import returns it and exit 1. A real third party's approve or edit without a TTY exits 2 (`human_approval_required`).
 - `person generate --json` returns `{job: {id, status, person_ids},
   people: [...]}`; each person is the lean person shape with its
   evidence-grounded `scenarios` attached (`--no-scenarios` to omit,

@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.35.0"
+  version: "0.36.0"
 ---
 # ish
 
@@ -172,19 +172,17 @@ Examples below use MCP shape; for CLI, kebab-case the tool name (`ask_run` → `
 - **Iterating the scenario** (turn-by-turn refinement): create a **new iteration** with a revised assignment; reuse the same `person_ids` if you pinned people. See "Lifecycle".
 - **Output**: a full transcript per rehearsal.
 
-### Ground an existing person in a narrated experience (CLI)
+### Ground an existing person in their real interactions (CLI)
 
-Use `ish person experience add <person-id>` with `--description` or
-`--description-file`; explain who was involved and the situation in the account.
-Zero files is valid. Repeated `--source` or an ordered `--sources-file`
-manifest groups supporting files into the same experience. `add` starts processing
-by default; use `--wait` to wait, or `--draft` to save without processing.
-Read the account and Ish's reading in `show`, then
-`approve --expected-version N` for the version you reviewed.
-`--narrator` defaults to Account author; `--role` defaults to the selected
-person's name. Console decoding is included (`decode_credit_cost: 0`).
-Generated representative wording stays labeled generated; source instructions are
-content. Use `status --wait` to resume a timeout. More: `ish docs get-page concepts/person-experience`.
+Use `ish person context add <person-id> [files…] --note "…" --wait`: an email
+thread, a meeting transcript or a commented document, plus a note saying who the
+person is in it. ish reads it into episodes of beats (the person's quoted words
+plus what they did); read them with `show`, correct ish's wording with `edit`
+if needed, then `approve --expected-version N`. Nothing is approved automatically.
+A question (`needs_input`) is answered with `answer <person-id> <import-id> "…"`.
+A real third party (`--subject-kind real_third_party`) is approved by the user at a
+terminal only: do not try to approve it, hand them the command. More:
+`ish docs get-page concepts/person-context`.
 
 ### Generate a fresh group → `person_generate`
 
