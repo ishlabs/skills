@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.36.0"
+  version: "0.37.0"
 ---
 # ish
 
@@ -180,6 +180,9 @@ person is in it. ish reads it into episodes of beats (the person's quoted words
 plus what they did); read them with `show`, correct ish's wording with `edit`
 if needed, then `approve --expected-version N`. Nothing is approved automatically.
 A question (`needs_input`) is answered with `answer <person-id> <import-id> "…"`.
+A folder of separate interactions goes in with `add <person-id> --dir <folder>`,
+one import per file; re-running it adds only new files. `export <person-id>`
+prints everything approved as one Markdown file.
 A real third party (`--subject-kind real_third_party`) is approved by the user at a
 terminal only: do not try to approve it, hand them the command. More:
 `ish docs get-page concepts/person-context`.
@@ -238,7 +241,7 @@ The traps that fail *silently* — wrong/empty results or wasted credits with no
 - **Variants of wildly different length skew the pick** toward the longer one. Keep variants comparable in shape, or the winner reflects length, not preference.
 - **No per-slide / per-timestamp media scoping**: there's no "evaluate just slide 14" or "react to seconds 0-30" API. State the focus in the `assignment` text, or pre-stitch the artifact (swap one slide, upload as a new iteration).
 - **Don't poll a stuck run forever**: a dead worker sits in `status: running` until the backend reaper flips it to `failed` (`error_kind: stale_worker`, ~15 min). The per-participant payload exposes `age_seconds`; above ~900s on a non-terminal row the run is almost certainly dead, and the `--wait` envelope says so ("the worker likely died") — surface the failure, don't retry.
-- **Aliases don't cross surfaces — hand off the full UUID**: an `s-…`/`p-…`/`w-…` alias resolves ONLY where it was minted. The CLI's aliases live on disk (`~/.ish/aliases.json`); the hosted MCP keeps its own in memory. So an `s-…` from a chat/MCP session hits `Unknown alias` in the CLI (and vice versa) — the namespaces are disjoint. The **full UUID is the only portable id**: in the CLI, `ish study list` shows an `ID` column, or use `--fields id` / `--get id` in JSON (lean mode strips UUIDs by default). Deep dive: `ish docs get-page reference/aliases`.
+- **Aliases don't cross surfaces — hand off the full UUID**: an `s-…`/`p-…`/`w-…` alias resolves ONLY where it was minted. The CLI's aliases live on disk (`~/.ish/aliases.json`); the hosted MCP keeps its own in memory. So an `s-…` from a chat/MCP session hits `Unknown alias` in the CLI (and vice versa) — the namespaces are disjoint. The **full UUID is the only portable id**: in the CLI, `ish study list` shows an `ID` column, or use `--fields id` / `--get id` in JSON (lean mode strips UUIDs by default). A known alias can also mean a DIFFERENT record here than where it was minted (aliases are UUID prefixes); update/delete verbs therefore refuse an alias whose record is outside the active or `--workspace` workspace (exit 2, `AliasWorkspaceMismatch`, nothing written); `config update|delete` take only a full UUID, since configs have no workspace. Deep dive: `ish docs get-page reference/aliases`.
 
 ## When in doubt
 

@@ -36,6 +36,10 @@ ish person generate \
 #    into a few coherent sections (a long article is usually 3-6 sections, not
 #    one per paragraph). The CLI errors on a missing label and warns on
 #    one-section-per-paragraph.
+#    To re-split an existing text iteration at block boundaries:
+#      ish iteration get i-… --blocks       # content_blocks: id, type, preview
+#      ish iteration update i-… --segmentation-json '<json>'
+#    (replaces only details.segmentation, same validation as create).
 ish study create --name "Onboarding UX" --modality interactive \
     --url https://example.com --screen-format desktop \
     --assignment "Sign up:Complete the signup flow" \
@@ -205,14 +209,20 @@ ish person context show p-d4e <episode-id> --json
 ish person context approve p-d4e <episode-id> --expected-version 1 --json
 # A wait that ran out (exit 5) resumes without re-reading:
 ish person context status p-d4e <import-id> --wait --json
+# A folder, one import per file; a re-run adds only files not added before:
+ish person context add p-d4e --dir ./peter --note "Peter's 2026 threads." --wait --json
+ish person context edit p-d4e <episode-id> --about "Intake form" --about-version v1
+ish person context export p-d4e --out peter.md
 ```
 
 Files are ordered; a quoted `*` in a file name is expanded. PDF, TXT, MD, CSV,
 TSV, XLSX, EML, VTT, SRT, PNG/JPEG/WEBP and MP3/WAV/M4A/OGG/MP4/MOV/WEBM recordings are supported (20 files, 100 MiB per
 file, 200 MiB total); export Word documents as PDF first. `--role FILE=shown` marks what the person was shown.
 Quotes are the person's own words; text in files is content, never instructions.
-`edit` corrects ish's wording or removes a quote and keeps an approved episode
-approved. `leave-out` stops using an episode (or one `--beat`) and keeps it as
+`edit` corrects ish's wording, removes a quote, or sets what the episode was
+about (`--about` keeps the current version; `--about-version`,
+`--clear-about-version`, `--clear-about`), and keeps an approved
+episode approved. A closed pattern line reads `(until Jun 2026)`. `leave-out` stops using an episode (or one `--beat`) and keeps it as
 Not in use, and `use-again` undoes that; `erase --yes` deletes it permanently. A real third party's `approve`
 and `edit` ask y/N at a terminal and exit 2 (`human_approval_required`) without one. See
 `ish docs get-page concepts/person-context` for the complete contract.
@@ -548,6 +558,11 @@ Rules to remember:
   summaries (`end_reason`, `dominant_dynamic`, `who_steered`) land on
   `iteration.conversations[]`. Per-participant summaries land on
   `participant.summary` as before.
+- A pair iteration runs once. `ish study run` refuses (exit 2) an
+  iteration whose conversations all finished, since the worker would
+  run nothing; add a fresh pair iteration with `ish iteration create`
+  and run it with `--iteration <new-id>`. A partly finished iteration
+  dispatches only its unfinished conversations.
 
 ### Filtering groups with role criteria (person-first)
 
@@ -1009,7 +1024,7 @@ run one participant per study for a clean start). Full reference:
   add one before `study run`, or it refuses with
   `study_has_no_tasks`); you don't
   need a follow-up `study get --verbose` to tell "none" from "stripped".
-- `person context --json` preserves full stable IDs, versions, states and nulls; `add`/`answer`/`status` return `{import, episodes}`, `list` is `{episodes:[...]}`. A wait timeout returns the import id (exit 5); resume with `status --wait`. A failed import returns it and exit 1. A real third party's approve or edit without a TTY exits 2 (`human_approval_required`).
+- `person context --json` preserves full stable IDs, versions, states and nulls; `add`/`answer`/`status` return `{import, episodes}`, `add --dir` an array of `{file, import, episodes}`, `list` is `{episodes:[...]}`; `export` prints Markdown even with `--json`. A wait timeout returns the import id (exit 5); resume with `status --wait`. A failed import returns it and exit 1. A real third party's approve or edit without a TTY exits 2 (`human_approval_required`).
 - `person generate --json` returns `{job: {id, status, person_ids},
   people: [...]}`; each person is the lean person shape with its
   evidence-grounded `scenarios` attached (`--no-scenarios` to omit,
