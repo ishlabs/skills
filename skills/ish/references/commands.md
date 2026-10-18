@@ -82,5 +82,6 @@ capture-vs-chain decision rule.
 `insufficient_credits` billing walls — NOT exit 3) · `2`
 usage/validation (incl. `ConfirmationRequired` from the credit-spend
 gate and client-side input checks) · `3` auth · `4` not-found ·
-`5` transient (retryable). See
-`ish docs get-page reference/json-mode`.
+`5` transient (retryable). The code follows the envelope's
+`error_code`, never the message wording: branch on those, not the
+prose. See `ish docs get-page reference/json-mode`.

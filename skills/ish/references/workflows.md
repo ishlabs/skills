@@ -32,6 +32,9 @@ ish person generate \
 #    (+ email-styling --sender-name/--sender-email/--featured-image-url) here,
 #    so a single SEGMENTED iteration is one call — no separate iteration
 #    create (which would leave an empty A + a redundant B).
+#    Text/media sessions stop at the first segment where the participant says
+#    they would not keep going (on by default); add --no-early-termination to
+#    have participants read/watch every segment even after saying they'd stop.
 #    Segments are SEMANTIC sections, not paragraphs: group related paragraphs
 #    into a few coherent sections (a long article is usually 3-6 sections, not
 #    one per paragraph). The CLI errors on a missing label and warns on
@@ -203,14 +206,14 @@ ish person generate --source ps-3a4 --count 4
 ## Context from real interactions for an existing person
 
 ```bash
-ish person context add p-d4e ./thread.eml ./proposal.pdf \
+ish person context add p-d4e --basis work ./thread.eml ./proposal.pdf \
   --note "Anna sent Peter the proposal." --role proposal.pdf=shown --wait --json
 ish person context show p-d4e <episode-id> --json
 ish person context approve p-d4e <episode-id> --expected-version 1 --json
 # A wait that ran out (exit 5) resumes without re-reading:
 ish person context status p-d4e <import-id> --wait --json
 # A folder, one import per file; a re-run adds only files not added before:
-ish person context add p-d4e --dir ./peter --note "Peter's 2026 threads." --wait --json
+ish person context add p-d4e --dir ./peter --note "Peter's 2026 threads." --basis work --wait --json
 ish person context edit p-d4e <episode-id> --about "Intake form" --about-version v1
 ish person context export p-d4e --out peter.md
 ```
@@ -224,7 +227,8 @@ about (`--about` keeps the current version; `--about-version`,
 `--clear-about-version`, `--clear-about`), and keeps an approved
 episode approved. A closed pattern line reads `(until Jun 2026)`. `leave-out` stops using an episode (or one `--beat`) and keeps it as
 Not in use, and `use-again` undoes that; `erase --yes` deletes it permanently. A real third party's `approve`
-and `edit` ask y/N at a terminal and exit 2 (`human_approval_required`) without one. See
+and `edit` happen only in the ish app: the CLI prints a link to the person there and exits 2
+(`human_approval_required`). See
 `ish docs get-page concepts/person-context` for the complete contract.
 
 ## 4. Build a specific simulated person
@@ -237,10 +241,10 @@ ish person create --name "Peter Lund" --type ai --country SE \
     --occupation "Ward manager" --bio "Runs ward 3 at a regional hospital."
 # → p-d4e
 ish person update p-d4e --subject-kind real_third_party   # a real person other than you
-ish person context add p-d4e ./thread.eml ./intake-v1.pdf \
+ish person context add p-d4e --basis work ./thread.eml ./intake-v1.pdf \
     --note "Anna sent Peter the intake proposal." --role intake-v1.pdf=shown --wait
 ish person context show p-d4e <episode-id>
-# The user approves a real third party at their own terminal:
+# The user approves a real third party in the ish app; this prints the link:
 ish person context approve p-d4e <episode-id> --expected-version 1
 ```
 
@@ -527,8 +531,8 @@ ish iteration create --study s-... --chat-mode participant_pair \
 ```
 
 Rules to remember:
-- Each side needs **either** `--person-*` (explicit IDs) **or**
-  `--role-criteria-*` (a filter the backend resolves). They can also
+- Each side needs **either** `--group-a` / `--group-b` (explicit IDs) **or**
+  `--role-criteria-a` / `--role-criteria-b` (a filter the backend resolves). They can also
   be combined — criteria then validates the explicit list.
 - When **both sides** use explicit `--group-a` / `--group-b`, they
   must be the same length (≥ 1). Pairs run 1:1 by index. Same person
@@ -617,7 +621,7 @@ pick who plays the role.
 If the resolved pool is smaller than the requested count for a side,
 `ish study run` exits 2 with the backend's pool-too-small error
 intact. Broaden the criteria, generate more people
-(`ish person generate`), or fall back to explicit `--person-*`.
+(`ish person generate`), or fall back to explicit `--group-a` / `--group-b`.
 
 ### Rehearsing against N variations of one side (1×N)
 
@@ -896,7 +900,7 @@ Rules to remember:
   the filtered set. `--transcript` is single-participant and errors
   (exit 2) when **any** filter or `--group-by` is set.
 - Per-step output exposes `participant_verdicts: [{participant_alias,
-  verdict, reason, evidence_interaction_ids}]` on **each row of
+  participant_id, verdict, reason, evidence_interaction_ids}]` on **each row of
   `rows[]`** (one per `(assignment, step)` pair) — not
   `per_participant_verdicts`. The verdict enum is `passed` /
   `inconclusive` / `failed`.
@@ -1024,7 +1028,7 @@ run one participant per study for a clean start). Full reference:
   add one before `study run`, or it refuses with
   `study_has_no_tasks`); you don't
   need a follow-up `study get --verbose` to tell "none" from "stripped".
-- `person context --json` preserves full stable IDs, versions, states and nulls; `add`/`answer`/`status` return `{import, episodes}`, `add --dir` an array of `{file, import, episodes}`, `list` is `{episodes:[...]}`; `export` prints Markdown even with `--json`. A wait timeout returns the import id (exit 5); resume with `status --wait`. A failed import returns it and exit 1. A real third party's approve or edit without a TTY exits 2 (`human_approval_required`).
+- `person context --json` preserves full stable IDs, versions, states and nulls; `add`/`answer`/`status` return `{import, episodes}`, `add --dir` an array of `{file, import, episodes}`, `list` is `{episodes:[...]}`; `export` prints Markdown even with `--json`. A wait timeout returns the import id (exit 5); resume with `status --wait`. A failed import returns it and exit 1. A real third party's approve or edit exits 2 (`human_approval_required`) with a link to the ish app.
 - `person generate --json` returns `{job: {id, status, person_ids},
   people: [...]}`; each person is the lean person shape with its
   evidence-grounded `scenarios` attached (`--no-scenarios` to omit,
@@ -1048,6 +1052,9 @@ run one participant per study for a clean start). Full reference:
   both families, with per-code remediation. Still stuck on *why* a call
   failed? Re-run with `ISH_DEBUG=api` to log the request/response wire
   (method, URL, masked auth, status, timing) to stderr — stdout stays clean.
+- A stderr line "the API server was starting up" is informational, not an
+  error: a read that timed out while the hosted API woke from idle was re-sent
+  once with a longer budget and succeeded. stdout and the exit code are as usual.
 - `ish study run --wait` returns `error_code: "wait_timeout"`
   on wait expiry (exit 5, retryable) — distinct from network /
   server timeouts. The envelope carries `progress` so you can
@@ -1058,10 +1065,12 @@ run one participant per study for a clean start). Full reference:
   includes `seeded_but_not_dispatched_ids[]` /
   `seeded_but_not_dispatched_aliases[]` — participants exist
   server-side; resume by polling them, don't re-run `study run`.
-- `ish ask run --new` is non-idempotent and marked
-  `retryable: false` on any failure. If you do see one, run
-  `ish ask list --workspace <id>` first to check whether the
-  ask was created server-side before retrying manually.
+- `ish ask create`, `ish ask run --new`, `ish ask run <ask>`
+  (round append) and `ish ask add-round` are non-idempotent and
+  marked `retryable: false` on any failure, a timeout or 5xx
+  included. If you do see one, run `ish ask list --workspace <id>`
+  (a create) or `ish ask get <ask>` (a round) first to check
+  whether it landed server-side before retrying manually.
 - `ish connect --detach` blocks until backend registration is
   confirmed. The orphan-tunnel-on-startup-404 bug is fixed.
 - The `Warning: Could not verify token (network error). Proceeding
