@@ -9,7 +9,8 @@ Goal: from a fresh install to a finished interactive study with 3
 participants and one question.
 
 ```bash
-# 1. Authenticate (browser flow, saves tokens to ~/.ish/config.json)
+# 1. Authenticate (browser flow, saves tokens to ~/.ish/config.json; prints the
+#    environment + api_url it signed in for, refuses a dev/prod mismatch)
 ish login
 
 # 2. Create + select a workspace
@@ -43,6 +44,8 @@ ish person generate \
 #      ish iteration get i-… --blocks       # content_blocks: id, type, preview
 #      ish iteration update i-… --segmentation-json '<json>'
 #    (replaces only details.segmentation, same validation as create).
+#    Interactive: --locale en-GB sets the page locale on iteration A; to change
+#    it later, ish iteration update i-… --locale <code> (swaps only details.locale).
 ish study create --name "Onboarding UX" --modality interactive \
     --url https://example.com --screen-format desktop \
     --assignment "Sign up:Complete the signup flow" \
@@ -157,14 +160,19 @@ ish ask run --new --name "hero shots" \
 
 # Read the verdict directly — no comment-parsing required:
 ish ask results --json | jq '.rounds[0].aggregates'
-# → { "picks": { "A": 22, "B": 8 },
-#     "winner": { "label": "A", "count": 22, "tied": false, "n": 30, "confidence": "high" } }
+# → { "picks": { "A": 22, "B": 8 }, "abstained": 0, "no_preference": 0,
+#     "winner": { "label": "A", "clear": true, "reason": null, "count": 22, "n": 30, "confidence": "high", … } }
+# A split round reads "label": null, "clear": false, "reason": "split" —
+# never treat its leader (winner.leader) as the winner.
 ```
 
 For `--wants-pick` / `--wants-ratings` rounds, `ask results --json`
-adds an `aggregates` field per round with `picks`, `ratings` (mean
-+ n per variant), and a `winner`. See `ish docs get-page
-reference/json-mode` for the full shape.
+adds an `aggregates` field per round with `picks`, `abstained`
+("none of these"), `no_preference`, `ratings` (mean + n per variant),
+and a `winner` taken from the backend's verdict: `clear`, `reason`
+(`no_picks` | `tied` | `no_preference` | `none` | `split`) and a
+`label` that is `null` unless `clear`. See `ish docs get-page
+concepts/ask` for the full shape.
 
 Add a follow-up round with no participant change:
 
@@ -185,6 +193,10 @@ real people reacted, then produces people PLUS scenarios grounded in those
 reactions. It enqueues, polls ~30-60s, then prints the people (with
 scenarios attached unless `--no-scenarios`). `--json` returns
 `{job: {person_ids}, people: [...]}`.
+
+With a source, keep the brief short: a long, detailed brief crowds out the
+source, so the scenarios restate the brief instead of quoting the source. A
+shorter brief lets the source carry the voice.
 
 ```bash
 # Inline — auto-uploads the file:
@@ -279,7 +291,9 @@ ish workspace site-access cookie --name session --value abc123 \
     --expires-at 2026-09-19T08:00:00Z
 
 # Login form — best effort: the participant types these only if it meets a
-# sign-in form during the task; for a wall use basic-auth or cookie:
+# sign-in form during the task; for a wall use basic-auth or cookie. Typed
+# only on the site's own hosts (local runs too), the password only into a
+# password field:
 ish workspace site-access login --username demo --password demo
 ```
 
@@ -334,13 +348,28 @@ want the remote fleet.
 
 Point the iteration at your local URL and add `--local`. `--wait`
 blocks until participants are terminal and returns per-participant
-results (same as a remote `--wait`).
+results (same as a remote `--wait`). The browser opens at the
+iteration's `screen_format`, so `--screen-format mobile_portrait` runs
+at 393x852 with a mobile user agent and touch.
 
 ```bash
 ish iteration create --url http://localhost:3000
 # study run draws credits → -y in --json/non-TTY. --local runs the browser
 # on this machine; --wait blocks to terminal and emits results.
 ish study run --local --sample 3 -y --wait
+```
+
+**Several named people, one process.** Pass every id to one
+`--person`; don't start one `study run --local` per person. Browser runs
+go in parallel by default: every participant at once, in one browser with
+a private context each, and each log line is prefixed with the person's
+name. `--parallel N` caps how many run at once (the rest start in later
+batches of N). Native iOS/Android runs are the exception: they default to one
+device at a time (§13).
+
+```bash
+ish study run --local --person p-795,p-af2,p-3d5 -y --wait
+ish study run --local --person p-795,p-af2,p-3d5 --parallel 2 -y --wait
 ```
 
 A loopback or private-network `--url` (`localhost`, `127.0.0.1`,
@@ -384,6 +413,17 @@ sleep 3
 URL=$(jq -r 'select(.status=="connected") | .tunnel_url' /tmp/ish-tunnel.log | head -1)
 ish iteration create --url "$URL"
 ```
+
+`connect` needs no dev-server config: it presents each request to the app
+as coming from `localhost`, so **Vite**'s `server.allowedHosts` and
+**Next**'s `allowedDevOrigins` checks both pass. It fetches `/` through the
+tunnel before reporting it active. If the app still answers with Vite's 403
+("Blocked request. This host (...) is not allowed"), connect exits non-zero
+without registering the tunnel. Fix the dev server, not the study: add
+`server.allowedHosts: ['.trycloudflare.com']` to the Vite config (or start
+Vite with `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=.trycloudflare.com`) and
+re-run connect. Any other 4xx/5xx at `/` is a stderr warning naming the status
+and the body's first line; the tunnel stays up.
 
 ## 8. Chat-modality study (drive a chatbot endpoint)
 
@@ -769,9 +809,12 @@ ASK=$(ish ask create --new --name "tagline AB" \
 # Wait silently — exit code is what matters here.
 ish ask wait "$ASK" --timeout 600 --quiet
 
-# Capture the winner label for downstream branching:
+# Capture the winner label for downstream branching. It is empty (null)
+# when the round has no clear winner; read winner.reason for why
+# (no_picks | tied | no_preference | none | split):
 WINNER=$(ish ask results "$ASK" --get rounds.aggregates.winner.label)
-echo "Winning variant: $WINNER"
+if [ -n "$WINNER" ]; then echo "Winning variant: $WINNER"
+else echo "No clear winner: $(ish ask results "$ASK" --get rounds.aggregates.winner.reason)"; fi
 
 # Display mode — show the user the full results table even though
 # we're inside a script (stdout is piped to tee).
@@ -970,6 +1013,12 @@ run one participant per study for a clean start). Full reference:
   is collapsed to one batch entry per study with nested
   `participant_ids[]` / `participant_aliases[]` / `job_ids[]` so an N-sample
   batch is a single row, not N near-duplicate rows.
+- `ish study create` makes the new study active, in the `~/.ish` every
+  session on the machine shares. stderr always says so, naming the previous
+  and new study, even with `--json`, `--quiet` or `--get`
+  (`Active study changed from s-a12 to s-347 ("Landing"). To go back: ish
+  study use s-a12`). stdout stays the study record. When sessions run in
+  parallel, name the study instead of relying on the active one.
 - `ish study poll` honors the active study set by `ish study use` —
   pass no `--study` flag and it polls the active study (parity with
   `study results` / `study wait` / `study run`).
@@ -1004,7 +1053,9 @@ run one participant per study for a clean start). Full reference:
   and returns just {participant, sentiment, comment, error_message}.
 - `ish ask results --json` keeps `variant_pick_id` on every
   response without needing `--verbose` — it's the load-bearing field
-  for "who picked what". Same logic on `ask get`.
+  for "who picked what". Same logic on `ask get`. Both also keep each
+  `rounds[].variants[].id` (the UUID that keys
+  `aggregates.pick_buckets` and that `--subset-variant` takes).
 - `ish iteration get --json` participants carry `alias` + `name` (M12
   parity with `study results --json`).
 - Use `--fields` to keep JSON tight: `ish study list --fields alias,name,status`
@@ -1018,6 +1069,19 @@ run one participant per study for a clean start). Full reference:
   on-device loop by a few seconds (server-side finalization) — `--wait`
   already covers it, but a bare immediate `study results` may need a
   re-read.
+- `ish study run --local` never waits on a participant whose start
+  failed. When every start fails it exits 1 at once with
+  `error_code: "local_start_failed"`, and the envelope's
+  `failed_participants[]` gives each `id`, `status`, `error` and
+  `retry_command`. Run that command, not the original: `--person` or a
+  sample would seed new rows. A partial failure exits as usual, with
+  the same array in the stdout envelope.
+- `ish study run --local` stops when its study or participant is gone.
+  A not-found answer to a step or to recording closes that browser and
+  ends the whole run, `--wait` included: exit 4,
+  `error_code: "not_found"`, a message saying the study or participant
+  no longer exists. Check with `ish study get`; a 5xx still retries or
+  warns and the run goes on.
 - For `ask` write-paths (update/archive/wait/add-questions/add-people),
   default JSON is compact (changed fields + alias). Pass `--verbose` for
   the full Ask payload.
@@ -1055,6 +1119,12 @@ run one participant per study for a clean start). Full reference:
 - A stderr line "the API server was starting up" is informational, not an
   error: a read that timed out while the hosted API woke from idle was re-sent
   once with a longer budget and succeeded. stdout and the exit code are as usual.
+- `ish status` answers within about 25 s even while the API is waking: a name
+  it could not look up in time carries `warning: "name lookup timed out …"`
+  and is not an orphan (don't `use --clear` it). An expired saved login whose
+  refresh can't complete fails within about 15 s with "Saved login expired
+  and could not be refreshed" (`auth_failed`, exit 3; `status` shows it as
+  its `hint`). Run `ish login`.
 - `ish study run --wait` returns `error_code: "wait_timeout"`
   on wait expiry (exit 5, retryable) — distinct from network /
   server timeouts. The envelope carries `progress` so you can

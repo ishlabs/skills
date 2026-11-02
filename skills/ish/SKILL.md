@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.39.0"
+  version: "0.40.0"
 ---
 # ish
 
@@ -65,7 +65,7 @@ Examples below use MCP shape; for CLI, kebab-case the tool name (`ask_run` → `
 
 - **Precursor**: a group of people (see "Audience is a query" above). If you don't already have suitable people, build them first via `person_generate`; reuse via `person_get` when possible.
 - **Load-bearing knobs**:
-  - `wants_pick: true` — adds an aggregate winner verdict. Without it you get prose reactions but no clear answer.
+  - `wants_pick: true` — adds an aggregate winner verdict. Without it you get prose reactions but no clear answer. Besides a variant, a person can answer `none` (rejects every variant) or `no_preference` (any would do; offered with 2+ variants); neither counts toward a variant.
   - `wants_ratings: true` — adds per-variant numeric scores.
   - `wait: true` — block until done. Without it you get a round id and have to poll.
   - `variants` — array of `{ label, content }` for text, or `{ label, image_url }` for hosted images. Two or more variants required for `wants_pick` to be meaningful (with N=1 it degrades to a prose reaction round). **Local image files**: only the CLI accepts them. Use `--variant LABEL:@./path.png` per file (the `@` prefix triggers upload); MCP requires a hosted URL.
@@ -80,7 +80,7 @@ Examples below use MCP shape; for CLI, kebab-case the tool name (`ask_run` → `
     wait: true,
   })
   ```
-- **Output**: per-participant reasoning + (if `wants_pick`) aggregate winner with confidence.
+- **Output**: per-participant reasoning + (if `wants_pick`) the backend's verdict: `winner.clear`, a `winner.label` only when clear (`null` otherwise), `winner.reason` (`no_picks` | `tied` | `no_preference` | `none` | `split`) when not, and a confidence.
 
 ### Test a live page or prototype → `study_run` (modality: interactive)
 
@@ -102,6 +102,7 @@ Examples below use MCP shape; for CLI, kebab-case the tool name (`ask_run` → `
   ```
 - **Output**: per-participant journey transcripts + aggregate friction / blocker / positive-moment counts.
 - **Local web app?** Prefer `ish study run --local` (CLI) — it runs the browser ON your machine (Playwright) against the iteration URL, including a plain `http://localhost:3000`, **no tunnel needed**. `ish connect <port>` (a Cloudflare tunnel) is only for letting the **remote** cloud fleet reach your localhost. See workflow §7.
+- **Several named people locally?** One process: `ish study run --local --person p-795,p-af2,p-3d5 -y --wait`. Browser runs go in parallel by default (every participant at once, one browser, a private context each); `--parallel N` caps it. Don't start one `study run --local` per person. See workflow §7a.
 
 ### Test a native iOS / Android app on a local device → `study_run --local` (interactive, CLI-only)
 
