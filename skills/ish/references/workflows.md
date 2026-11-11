@@ -199,7 +199,8 @@ source, so the scenarios restate the brief instead of quoting the source. A
 shorter brief lets the source carry the voice.
 
 ```bash
-# Inline — auto-uploads the file:
+# Inline — auto-uploads the file. Text sources: .pdf .docx .xlsx .xlsm .csv .tsv .txt .md .log .eml
+# (.json, .html and legacy .doc are refused, exit 2: convert to PDF or plain text first).
 ish person generate --source ./interviews/sarah.txt --count 4
 
 # The per-source note is the researcher's: how the person reacted to THAT file.
@@ -533,7 +534,9 @@ also in `study poll --json`. Branch on it instead of treating
 Pre-flight tip: `ish workspace info` exposes
 `{studies_used, studies_max, people_used, people_max, concurrent_participants_max, workspace_members_max, tier}` so
 you can branch on plan caps before `study create` returns
-`error_code: usage_limit_reached`.
+`error_code: usage_limit_reached`. A `*_max` of `null` means no cap:
+unlimited, or for `workspace_members_max` on Teams, per-seat (each added
+member is a paid seat).
 
 The full reference is at `ish docs get-page guides/chat`,
 secrets are at `ish docs get-page concepts/secret`.
@@ -962,8 +965,8 @@ fleet, not this).
 ```bash
 # 1. Preflight the local toolchain (Xcode + simulators for iOS, adb + an
 #    AVD for Android). It exits non-zero on a blocking gap, so it gates;
-#    ish setup installs the missing local-sim deps.
-ish check ios || ish setup
+#    ish setup ios downloads what's missing and starts a simulator.
+ish check ios || ish setup ios
 
 # 2. Study is platform-agnostic (assignments + questions); the ITERATION
 #    names the platform + app. modality is interactive.
@@ -1102,6 +1105,10 @@ run one participant per study for a clean start). Full reference:
   the JSON body to construct a recovery message. `person generate` /
   `study generate` refuse the entire batch when the post-generation
   count would exceed the cap; re-issue with a smaller `--count`.
+  `max: 0` means a plan feature the plan lacks (e.g.
+  `proprietaryDataIngestion`: building people from files, person
+  context imports, custom attributes on Free). Only an upgrade unlocks
+  it; never delete people or other resources to "make room".
 - Every verb's `--help` ends with a "Tips:" footer naming `--get`
   and `--fields`. If you're reaching for `jq -r .x` you almost
   certainly wanted `--get x`. Unsure which fields a response carries?
@@ -1119,12 +1126,16 @@ run one participant per study for a clean start). Full reference:
 - A stderr line "the API server was starting up" is informational, not an
   error: a read that timed out while the hosted API woke from idle was re-sent
   once with a longer budget and succeeded. stdout and the exit code are as usual.
+  That wait can last up to about 3 minutes (15 s, then 180 s), so give a read
+  command a tool timeout above 200 s rather than killing it as hung.
 - `ish status` answers within about 25 s even while the API is waking: a name
   it could not look up in time carries `warning: "name lookup timed out …"`
   and is not an orphan (don't `use --clear` it). An expired saved login whose
   refresh can't complete fails within about 15 s with "Saved login expired
   and could not be refreshed" (`auth_failed`, exit 3; `status` shows it as
-  its `hint`). Run `ish login`.
+  its `hint`). Run `ish login`. In `ish status --json`, branch on
+  `auth.ok` (false with a `reason` and `error_code` when no command would
+  pass auth; status still exits 0), not on the workspace alias being set.
 - `ish study run --wait` returns `error_code: "wait_timeout"`
   on wait expiry (exit 5, retryable) — distinct from network /
   server timeouts. The envelope carries `progress` so you can

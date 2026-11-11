@@ -23,8 +23,8 @@ ish <command> --help
 | `config`    | Simulation configs (model, timing, retries)     | (run `ish config --help`)   |
 | `chat`      | Chat endpoint CRUD + smoke test (external_chatbot mode); pair-mode iterations created via `iteration create --chat-mode participant_pair` | guides/chat                 |
 | `secret`    | Per-workspace secrets (`{{secret:KEY}}` resolver); `set` and `delete` block reserved `BASIC_AUTH_*`/`SESSION_COOKIE_*`/`LOGIN_*` keys | concepts/secret           |
-| `check`     | Local-toolchain preflight for `study run --local` (`check ios` / `check android` / `check web`). Exits non-zero on a blocking gap so it gates: `ish check ios \|\| ish setup`. Alias: `doctor`. | guides/native-app |
-| `setup`     | Install the missing local-sim deps surfaced by `ish check` (Xcode toolchain, simulators, adb, Chromium). | guides/native-app |
+| `check`     | Local-toolchain preflight for `study run --local` (`check ios` / `check android` / `check web`). Prints numbered next steps (`--json`: `next_steps`). Exits non-zero on a blocking gap so it gates: `ish check ios \|\| ish setup ios`. Alias: `doctor`. | guides/native-app |
+| `setup`     | Step through local-sim setup for a platform (`setup ios` / `setup android` / `setup web`): downloads Chromium, the iOS test runner, adb; starts a simulator/emulator (`--no-device` skips it); exits 1 while a blocking step remains. | guides/native-app |
 | `docs`      | Offline docs for agents                         | (run `ish docs --help`)     |
 | `commands`  | Entire command tree + flags + exit codes as one JSON manifest (`ish commands --json`) | reference/commands |
 | `init`      | Drop this skill into a Claude Code / Codex /    | (run `ish init --help`)     |
