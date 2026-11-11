@@ -398,7 +398,7 @@ long-running — keep it open in a separate terminal (or background it).
 ```bash
 # Terminal A — keep open:
 ish connect 3000
-# stdout: Tunnel URL: https://<random>.trycloudflare.com → http://localhost:3000
+# stdout: Tunnel URL   https://<random>.trycloudflare.com → http://localhost:3000
 
 # Terminal B — use the URL:
 ish iteration create --url https://<random>.trycloudflare.com
@@ -1019,7 +1019,7 @@ run one participant per study for a clean start). Full reference:
 - `ish study create` makes the new study active, in the `~/.ish` every
   session on the machine shares. stderr always says so, naming the previous
   and new study, even with `--json`, `--quiet` or `--get`
-  (`Active study changed from s-a12 to s-347 ("Landing"). To go back: ish
+  (`! Active study changed from s-a12 to Landing (s-347). To go back: ish
   study use s-a12`). stdout stays the study record. When sessions run in
   parallel, name the study instead of relying on the active one.
 - `ish study poll` honors the active study set by `ish study use` —
@@ -1109,7 +1109,7 @@ run one participant per study for a clean start). Full reference:
   `proprietaryDataIngestion`: building people from files, person
   context imports, custom attributes on Free). Only an upgrade unlocks
   it; never delete people or other resources to "make room".
-- Every verb's `--help` ends with a "Tips:" footer naming `--get`
+- Every verb's `--help` ends with a one-line "Tip:" footer naming `--get`
   and `--fields`. If you're reaching for `jq -r .x` you almost
   certainly wanted `--get x`. Unsure which fields a response carries?
   `--list-fields` (or `--fields ?`) prints them as `{"fields":[...]}`
@@ -1123,7 +1123,7 @@ run one participant per study for a clean start). Full reference:
   both families, with per-code remediation. Still stuck on *why* a call
   failed? Re-run with `ISH_DEBUG=api` to log the request/response wire
   (method, URL, masked auth, status, timing) to stderr — stdout stays clean.
-- A stderr line "the API server was starting up" is informational, not an
+- A stderr line "The API server was starting up" is informational, not an
   error: a read that timed out while the hosted API woke from idle was re-sent
   once with a longer budget and succeeded. stdout and the exit code are as usual.
   That wait can last up to about 3 minutes (15 s, then 180 s), so give a read
