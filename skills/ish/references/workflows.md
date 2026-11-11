@@ -1136,6 +1136,10 @@ run one participant per study for a clean start). Full reference:
   its `hint`). Run `ish login`. In `ish status --json`, branch on
   `auth.ok` (false with a `reason` and `error_code` when no command would
   pass auth; status still exits 0), not on the workspace alias being set.
+- An outdated `ish` hits bugs that are already fixed. When
+  `ish status --json` shows `update.behind: true`, run `update.command`
+  (`ish upgrade`, or the npm / Homebrew command it names) before debugging
+  a failure.
 - `ish study run --wait` returns `error_code: "wait_timeout"`
   on wait expiry (exit 5, retryable) — distinct from network /
   server timeouts. The envelope carries `progress` so you can
