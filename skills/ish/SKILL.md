@@ -4,7 +4,7 @@ description: "Use this skill whenever the user mentions ish, a study, a person, 
 license: SEE LICENSE IN LICENSE
 metadata:
   author: ish
-  version: "0.43.0"
+  version: "0.44.0"
 ---
 # ish
 
@@ -182,6 +182,7 @@ required without a terminal, so ask the user for it and never pick one. ish
 reads it into episodes of beats (the person's quoted words plus what they did); read them with `show`, correct ish's wording with `edit`
 if needed, then `approve --expected-version N`. Nothing is approved automatically.
 A question (`needs_input`) is answered with `answer <person-id> <import-id> "…"`.
+Human output shows episodes as `ce-…` and imports as `ci-…` aliases; both forms are accepted.
 A folder of separate interactions goes in with `add <person-id> --dir <folder>`,
 one import per file; re-running it adds only new files. `export <person-id>`
 prints the whole person as one Markdown file: name, profile fields (date of birth,

@@ -1077,8 +1077,10 @@ run one participant per study for a clean start). Full reference:
   `error_code: "local_start_failed"`, and the envelope's
   `failed_participants[]` gives each `id`, `status`, `error` and
   `retry_command`. Run that command, not the original: `--person` or a
-  sample would seed new rows. A partial failure exits as usual, with
-  the same array in the stdout envelope.
+  sample would seed new rows. An entry with no `retry_command` is held
+  by a hosted run: wait for it or stop it, as its `error` says. A
+  partial failure exits as usual, with the same array in the stdout
+  envelope.
 - `ish study run --local` stops when its study or participant is gone.
   A not-found answer to a step or to recording closes that browser and
   ends the whole run, `--wait` included: exit 4,
